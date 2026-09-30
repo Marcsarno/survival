@@ -29,6 +29,7 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 | Use items | **1** food · **2** medkit · **3** water · **4** lamp oil, or click the slot | tap the slot |
 | Camera height | mouse wheel or **+ / −** | ＋ / － |
 | Rotate camera | **Z / X** (45° steps) | — |
+| Low cinematic camera | **C** | — |
 | Skip to night / morning | **N** | — |
 | Map · Help / pause | **M** · **H** or **Esc** | 🗺 · ? |
 
@@ -60,11 +61,20 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 
 **Wildlife and a companion.** Deer, foxes, rabbits and ducks flee when you get close and leave tracks in the snow. Feed the stray dog at the playground and it follows you, growls at the frozen, and waits by the fire.
 
+**Details and discoveries.**
+- Frozen iguanas fallen from the palms, pink lawn flamingos, and snowmen the neighborhood kids built.
+- An emergency radio at the lifeguard stand; each turn of the dial gives a new broadcast.
+- Chalk drawings and signs, and a lantern moving along the far canal bank at night.
+- You can refill water daily at the ice hole in the pond.
+
+**Guidance.** A short goals list sits under the clock: bring firewood, find the axe, search houses, check the police cruiser, and so on. The map (M) reveals areas as you visit them.
+
 **Atmosphere.**
 - A 24-minute day with dawn, day, dusk and moonlit night.
+- Snow squalls that pass through: visibility drops, the wind rises, and the cold bites harder.
 - A hand lantern with limited oil.
 - Falling snow and fading footprints; the frozen and animals leave tracks too.
-- Wind, footstep crunch and fire crackle, all synthesized.
+- Wind, footstep crunch, fire crackle, distant wolves and radio static, all synthesized.
 
 **Other.** Progress autosaves in the browser: stash, upgrades, collected items, tools, the dog, and the time of day.
 
@@ -90,7 +100,7 @@ public/assets/models/   game-ready GLB files (built by Blender)
 assets/source/     original downloaded models + license manifest
 assets/blend/      editable .blend sources for every built model
 blender/           build_assets.py (repeatable build), inspect_glb.py, render_sheet.py
-tools/             fetch-assets.mjs, playtest.mjs, glb-info.mjs
+tools/             fetch-assets.mjs, optimize-models.mjs, playtest.mjs, shots.mjs (review screenshots), perf-mobile-sim.mjs, glb-info.mjs
 docs/              design record, current state, playtest report, screenshots
 ```
 

@@ -18,12 +18,15 @@ Last updated 2026-09-30, after the overnight build.
   - Procedural sound.
 - **Controls:** keyboard and mouse, plus touch controls. The camera height is adjustable, it rotates in 45° steps, and there is a low cinematic mode (C).
 - **Guidance:** a goals checklist, a map that reveals areas as you visit them, and autosave.
+- **Discoveries:** frozen iguanas, flamingos, snowmen, the emergency radio, pond water, the far-bank lantern, and snow squalls.
+- **Pathfinding:** the frozen follow a flow field around walls, cars and fences.
+- **Performance:** in the phone approximation (4× CPU throttle) it holds about 60 fps. Characters take one draw call each, and anything far away is neither drawn nor animated.
 - **Pipeline:** repeatable Blender builds (`npm run assets`) produce compressed game models. Editable `.blend` files and license records are kept.
 
 ## Known issues / limitations
 
 - **Phones untested on real hardware.** Only a simulated touch viewport was checked. Performance and controls still need a real iPhone and Android test.
-- **No pathfinding.** The frozen and animals move straight at their goal and slide along obstacles, so a fence can hold a zombie up.
+- **Animals don't pathfind.** They wander and flee in straight lines. The frozen do pathfind, but only within about 34 m of the player.
 - **Occasional frame-time spikes** (about 110 ms) during automated runs; the cause isn't isolated.
 - **No interiors.** Houses and the pharmacy are searched at the door. The far canal bank can't be reached.
 - **No end or win state.** It's a sandbox loop.
@@ -40,9 +43,8 @@ Last updated 2026-09-30, after the overnight build.
 
 1. Play it on a phone and tune `quality=low`: shadows, pixel ratio, draw distance.
 2. Deploy `dist/` to Vercel under the **marc731@gmail.com** account (the CLI is logged in) to get a link to text.
-3. Add simple grid pathfinding for the frozen.
-4. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
-5. More set dressing to match the concept density: potted plants, arched entries, pools, bikes.
+3. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
+4. More set dressing to match the concept density: potted plants, arched entries, pools, bikes.
 
 ## How to continue
 

@@ -12,8 +12,8 @@ const KEYS = [ // hour, sky, sunColor, sunIntensity, hemiSky, hemiGround, hemiIn
   [8, '#bcd0e8', '#ffe2c4', 2.6, '#c6d6ee', '#8a8a96', 1.0, '#c8d6e6', 1.0],
   [12, '#c4d8ee', '#fff4e6', 3.0, '#d2def0', '#8f93a0', 1.05, '#d0dcea', 1.0],
   [16, '#c9cfe0', '#ffe0b8', 2.6, '#c8d0e6', '#8a8490', 0.95, '#cdd2e2', 1.0],
-  [18, '#d69a7c', '#ffac6e', 1.7, '#a898b8', '#6a5a60', 0.8, '#c49a8e', 1.0],
-  [19.3, '#4a4a70', '#b08aa8', 0.7, '#4a5080', '#2a2838', 0.6, '#3e4266', 1.0],
+  [18, '#e0a684', '#ffb070', 2.2, '#b8a8c4', '#7a6a6c', 1.0, '#d0a898', 1.0],
+  [19.3, '#56507a', '#c090a8', 0.9, '#5a6090', '#2e2c3e', 0.75, '#484a70', 1.0],
   [20.5, '#141c30', '#9db3e6', 0.85, '#34466e', '#1d2436', 0.75, '#1a2440', 1.0],
   [24, '#0f1728', '#9db3e6', 0.85, '#34466e', '#1d2436', 0.75, '#18213a', 1.0],
 ];
@@ -63,7 +63,9 @@ export class DayNight {
     // sun by day, moon by night: both come from the south-east-ish so shadows read well from the camera
     const day = h >= 6 && h <= 19.5;
     const ang = day ? ((h - 6) / 13.5) * Math.PI : 0.9;
-    const dir = new THREE.Vector3(Math.cos(ang) * 0.9 + 0.2, Math.max(0.35, Math.sin(ang)) * 1.1, 0.55).normalize();
+    // the sun swings from south-east to south-south-west but stays on the camera side, so faces read lit
+    const tday = Math.min(1, Math.max(0, (h - 6) / 13.5));
+    const dir = new THREE.Vector3(lerp(1.0, -0.35, tday), Math.max(0.45, Math.sin(ang)) * 1.1, 0.9).normalize();
     if (!day) dir.set(-0.45, 1.0, 0.6).normalize();
     this.sun.position.copy(focus).addScaledVector(dir, 80);
     this.sun.target.position.copy(focus);

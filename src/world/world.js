@@ -366,6 +366,7 @@ export function buildWorld(scene, assets, col) {
     const hole = new THREE.Mesh(new THREE.CircleGeometry(3.4, 7), new THREE.MeshStandardMaterial({ color: '#23485a', roughness: 0.2, flatShading: true }));
     hole.rotation.x = -Math.PI / 2; hole.position.set(pond.x + 4, 0.05, pond.z + 2); hole.userData.noSeeThrough = true; scene.add(hole);
     col.circle(pond.x + 4, pond.z + 2, 3.1, 'water');
+    addI({ kind: 'well', x: pond.x + 4, z: pond.z - 1.6, r: 2.2, hold: 1.6, label: 'Break the skim ice and fill a bottle' });
     block(pond.x, pond.z, pond.r + 2);
     for (let i = 0; i < 14; i++) { const a = rng() * Math.PI * 2; place(pick(rng, ['rock-1', 'rock-2']), pond.x + Math.cos(a) * (pond.r + 0.6), pond.z + Math.sin(a) * (pond.r + 0.6), undefined, 0.8, 0); }
     for (const [dx, dz] of [[3, 3], [5, 1], [4.5, 3.2]]) animalSpawns.push({ kind: 'duck', x: pond.x + dx, z: pond.z + dz, water: [[pond.x + 1.5, pond.z - 0.5], [pond.x + 6.5, pond.z + 4.5]] });

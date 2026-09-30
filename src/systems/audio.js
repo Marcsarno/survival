@@ -48,6 +48,9 @@ export class Audio {
     this.windFilter.frequency.value = 380 + Math.sin(performance.now() * 0.0003) * 120;
     const d = game.shelter.distToFire(game.player.pos);
     this.fireGain.gain.value = game.shelter.lit ? Math.max(0, 1 - d / 14) * 0.05 * (0.6 + Math.random() * 0.8) : 0;
+    // distant wolves in the pines late at night
+    this._howlT = (this._howlT ?? 40) - 1 / 60;
+    if (n > 0.8 && this._howlT <= 0) { this._howlT = 50 + Math.random() * 60; const dw = Math.max(0, game.player.pos.x + 120); this.howl(Math.max(0.012, 0.06 - dw / 4000)); }
     if (game.shelter.lit && d < 12 && Math.random() < 0.08) this.burst({ dur: 0.03, freq: 2500 + Math.random() * 2000, gain: 0.08 * (1 - d / 12) });
   }
 
@@ -68,5 +71,6 @@ export class Audio {
   groan(dist) { const g = Math.max(0.02, 0.14 * (1 - dist / 26)); this.tone({ freq: 95 + Math.random() * 30, to: 70, dur: 1.1, type: 'sawtooth', gain: g }); }
   zombieDie() { this.tone({ freq: 110, to: 40, dur: 0.9, type: 'sawtooth', gain: 0.12 }); }
   radio() { this.burst({ dur: 1.4, freq: 2200, q: 0.4, gain: 0.12, attack: 0.05 }); this.tone({ freq: 440, dur: 0.6, type: 'square', gain: 0.02, to: 300, delay: 0.3 }); }
+  howl(g = 0.05) { this.tone({ freq: 380, to: 620, dur: 1.2, type: 'sine', gain: g }); this.tone({ freq: 620, to: 430, dur: 1.6, type: 'sine', gain: g * 0.8, delay: 1.1 }); }
   bark() { this.tone({ freq: 520, to: 300, dur: 0.09, type: 'square', gain: 0.07 }); this.tone({ freq: 480, to: 280, dur: 0.1, type: 'square', gain: 0.06, delay: 0.16 }); }
 }

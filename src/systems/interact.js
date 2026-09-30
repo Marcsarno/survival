@@ -16,7 +16,7 @@ export class Interactions {
       m.position.set(i.x, i.my || 0, i.z); m.rotation.set(i.mrx || 0, i.mry || 0, 0);
       g.scene.add(m); i.mesh = m;
     }
-    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack', 'radio'].includes(i.kind)) {
+    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack', 'radio', 'well'].includes(i.kind)) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false, opacity: 0, fog: false }));
       s.scale.setScalar(0.55); s.position.set(i.x, 1.5, i.z); s.renderOrder = 5;
       g.scene.add(s); i.marker = s;
@@ -104,6 +104,12 @@ export class Interactions {
         break;
       }
       case 'note': ui.toast(i.text, 'info', 9000); i.label = i.label.replace('Read', 'Reread'); g.stats.notes = (g.stats.notes || 0) + 1; break;
+      case 'well': {
+        if ((i.lastDay ?? -1) === g.daynight.day) { ui.toast('The hole has skinned over again. Come back tomorrow.', 'info'); break; }
+        if (!g.inv.add('water', 2)) { ui.toast('Your pack is full.', 'bad'); break; }
+        i.lastDay = g.daynight.day; this.toastItems({ water: 2 }); g.audio?.whoosh();
+        break;
+      }
       case 'radio': {
         const lines = [
           '…kkhh… this is WDRF on emergency power… Deerfield warming center at the high school is FULL… do not travel after dark…',

@@ -10,7 +10,9 @@
     "fetch-assets": "node tools/fetch-assets.mjs",
     "playtest": "node tools/playtest.mjs",
     "optimize": "node tools/optimize-models.mjs",
-    "deploy": "npx vercel deploy --prod --yes --scope marcsarno"
+    "deploy": "npx vercel deploy --prod --yes --scope marcsarno",
+    "hub": "vite --open /hub/",
+    "capture": "node tools/capture.mjs"
   },
   "repository": {
     "type": "git",

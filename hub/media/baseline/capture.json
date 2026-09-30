@@ -1,0 +1,86 @@
+{
+  "set": "baseline",
+  "date": "2026-09-30T18:01:23.303Z",
+  "commit": "176d7a5",
+  "url": "http://localhost:5198/",
+  "items": [
+    {
+      "type": "image",
+      "name": "phone-start",
+      "file": "media/baseline/phone-start.png",
+      "view": "phone",
+      "note": "Start at the pavilion shelter, default camera (yaw 45°, phone default height level).",
+      "pos": [
+        -60,
+        14.5
+      ]
+    },
+    {
+      "type": "image",
+      "name": "phone-street",
+      "file": "media/baseline/phone-street.png",
+      "view": "phone",
+      "note": "Coral Palm Drive, the main street.",
+      "pos": [
+        40,
+        1
+      ]
+    },
+    {
+      "type": "image",
+      "name": "phone-woods",
+      "file": "media/baseline/phone-woods.png",
+      "view": "phone",
+      "note": "Slash Pine Woods by the woodshed.",
+      "pos": [
+        -100,
+        8
+      ]
+    },
+    {
+      "type": "image",
+      "name": "desktop-start",
+      "file": "media/baseline/desktop-start.png",
+      "view": "desktop",
+      "note": "Desktop start view (1280×720).",
+      "pos": [
+        -60,
+        14.5
+      ]
+    },
+    {
+      "type": "image",
+      "name": "desktop-street",
+      "file": "media/baseline/desktop-street.png",
+      "view": "desktop",
+      "note": "Desktop view of the street.",
+      "pos": [
+        40,
+        1
+      ]
+    },
+    {
+      "type": "video",
+      "name": "clip-walk-stop",
+      "file": "media/baseline/clip-walk-stop.webm",
+      "view": "phone",
+      "note": "Motion test: W for 3 s, release, then D/S/A/W 1.1 s each. Keyboard input in a 390×844 emulated phone viewport.",
+      "seconds": 10,
+      "fps": [
+        47,
+        60
+      ]
+    },
+    {
+      "type": "image",
+      "name": "phone-after-motion",
+      "file": "media/baseline/phone-after-motion.png",
+      "view": "phone",
+      "note": "Footprints left by the motion test.",
+      "pos": [
+        -62.09,
+        15.92
+      ]
+    }
+  ]
+}

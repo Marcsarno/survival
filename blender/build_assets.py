@@ -165,9 +165,9 @@ def build_pine(name, seed, H):
         a = rng.uniform(0, math.tau)
         rad = (1.0 - t) * 2.6 + rng.uniform(0.2, 0.7)
         c = Vector((0, 0, H * t)) + lean * t + Vector((math.cos(a), math.sin(a), 0)) * rad
-        r = rng.uniform(1.25, 1.75) * (1.25 - 0.45 * t) * H / 10
+        r = rng.uniform(0.95, 1.3) * (1.25 - 0.45 * t) * H / 10
         b.cone(Vector((0, 0, H * t - 0.4)) + lean * t, c, 0.07, 0.04, bark, segs=4, rng=rng)
-        b.ico(c, r * 1.25, leaf if i % 2 else leaf2, scale=(1.15, 1.15, 0.58), jitter=0.16, rng=rng, tag="leaf")
+        b.ico(c, r * 1.25, leaf if i % 2 else leaf2, scale=(1.1, 1.1, 0.72), jitter=0.16, rng=rng, tag="leaf")
     b.ico(top + Vector((0, 0, 0.15)), 0.9 * H / 10, leaf, scale=(1, 1, 0.8), jitter=0.15, rng=rng, tag="leaf")
     b.snow("leaf", snow, thresh=0.42, rng=rng)
     return b.finish()

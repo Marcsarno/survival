@@ -72,13 +72,13 @@ export class Zombies {
       else if (z.state === 'attack') {
         z.t -= dt;
         if (z.t <= 0) {
-          if (d < 1.7 && !g.player.dead) g.player.hurt(14 + night * 6, o);
-          z.state = 'chase'; z.attackT = 1.1;
+          if (d < 1.7 && !g.player.dead) g.player.hurt(9 + night * 4, o);
+          z.state = 'chase'; z.attackT = 1.7;
         }
       } else if (sees || (z.state === 'chase' && d < sight + 8)) {
         z.state = 'chase'; goal = p; speed = (DAY_SPEED + (NIGHT_SPEED - DAY_SPEED) * night) * (d < 6 ? 1.15 : 1);
         if (d < 1.25 && z.attackT <= 0 && !g.player.dead) {
-          z.state = 'attack'; z.t = 0.55; speed = 0;
+          z.state = 'attack'; z.t = 0.7; speed = 0;
           this.play(z, z.idx % 2 ? 'Punch_Left' : 'Punch_Right', 1.1, true);
         }
       } else {

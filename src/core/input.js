@@ -37,7 +37,7 @@ export class Input {
     let joyId = null, cx = 0, cy = 0;
     const R = 52;
     joy.addEventListener('pointerdown', (e) => {
-      joyId = e.pointerId; joy.setPointerCapture(e.pointerId);
+      joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch {}
       const r = joy.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2;
       move(e);
     });
@@ -57,7 +57,7 @@ export class Input {
     for (const b of document.querySelectorAll('#touch .tb')) {
       const act = b.dataset.act;
       b.addEventListener('pointerdown', (e) => {
-        e.preventDefault(); b.setPointerCapture(e.pointerId);
+        e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {}
         if (act === 'sprint') { this.touch.sprintToggle = !this.touch.sprintToggle; b.classList.toggle('active', this.touch.sprintToggle); return; }
         this.touch.buttons.add(act); this.touch.pressedButtons.add(act); b.classList.add('active');
       });

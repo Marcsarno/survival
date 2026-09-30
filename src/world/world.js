@@ -80,7 +80,7 @@ export function buildWorld(scene, assets, col) {
   const iceMat = new THREE.MeshStandardMaterial({ color: PAL.ice, roughness: 0.35, flatShading: true, transparent: true, opacity: 0.9 });
   for (let x = -38; x < 102; x += 6 + rng() * 5) {
     const g = new THREE.CircleGeometry(1.5 + rng() * 2.2, 5 + Math.floor(rng() * 3)); g.rotateX(-Math.PI / 2);
-    const m = new THREE.Mesh(g, iceMat); m.position.set(x, -0.33, 61 + rng() * 1.5); m.scale.z = 0.5; scene.add(m);
+    const m = new THREE.Mesh(g, iceMat); m.position.set(x, -0.33, 61 + rng() * 1.5); m.scale.z = 0.5; m.userData.noSeeThrough = true; scene.add(m);
   }
   // collisions: water, sea, world edge
   col.box(32, 68, 72, 8.2, 0, 'water');
@@ -253,7 +253,7 @@ export function buildWorld(scene, assets, col) {
     car(22, -71.5, 0.1, 'sedan', 6, null);
     B.graffiti(b, mtx(31.05, 2.2, -92, Math.PI / 2), 'NO MEDS LEFT', 4, 1.6);
     for (const [x, z] of [[2, -104], [36, -106], [0, -88]]) place('palm-1', x, z, undefined, 1, 0.35);
-    for (const [x, z] of [[18, -80], [10, -84], [28, -84], [23, -75], [14, -76]]) zombieSpawns.push({ x, z, area: 'pharmacy' });
+    for (const [x, z, night] of [[18, -80], [10, -84, true], [28, -84], [23, -75, true], [14, -76]]) zombieSpawns.push({ x, z, area: 'pharmacy', night });
   }
 
   // -------------------------------------------------------------- Service road and abandoned camp
@@ -340,15 +340,15 @@ export function buildWorld(scene, assets, col) {
     const pond = { x: -120, z: -39, r: 12 };
     // frozen pond: ice disk with an open-water hole
     const ice = new THREE.Mesh(new THREE.CircleGeometry(pond.r, 11), new THREE.MeshStandardMaterial({ color: '#cfe3ee', roughness: 0.25, flatShading: true }));
-    ice.rotation.x = -Math.PI / 2; ice.position.set(pond.x, 0.03, pond.z); ice.receiveShadow = true; scene.add(ice);
+    ice.rotation.x = -Math.PI / 2; ice.position.set(pond.x, 0.03, pond.z); ice.receiveShadow = true; ice.userData.noSeeThrough = true; scene.add(ice);
     const hole = new THREE.Mesh(new THREE.CircleGeometry(3.4, 7), new THREE.MeshStandardMaterial({ color: '#23485a', roughness: 0.2, flatShading: true }));
-    hole.rotation.x = -Math.PI / 2; hole.position.set(pond.x + 4, 0.05, pond.z + 2); scene.add(hole);
+    hole.rotation.x = -Math.PI / 2; hole.position.set(pond.x + 4, 0.05, pond.z + 2); hole.userData.noSeeThrough = true; scene.add(hole);
     col.circle(pond.x + 4, pond.z + 2, 3.1, 'water');
     block(pond.x, pond.z, pond.r + 2);
     for (let i = 0; i < 14; i++) { const a = rng() * Math.PI * 2; place(pick(rng, ['rock-1', 'rock-2']), pond.x + Math.cos(a) * (pond.r + 0.6), pond.z + Math.sin(a) * (pond.r + 0.6), undefined, 0.8, 0); }
     for (const [dx, dz] of [[3, 3], [5, 1], [4.5, 3.2]]) animalSpawns.push({ kind: 'duck', x: pond.x + dx, z: pond.z + dz, water: [[pond.x + 1.5, pond.z - 0.5], [pond.x + 6.5, pond.z + 4.5]] });
     // woodshed (concept "01-wood-shelter"): stacked firewood, lantern, the axe in a chopping stump
-    const ws = { x: -100, z: -6 };
+    const ws = { x: -106, z: 4 };
     B.woodshed(b, col, mtx(ws.x, 0, ws.z, Math.PI / 2 + 0.15));
     block(ws.x, ws.z, 7);
     addI({ kind: 'wood', x: ws.x + 2.2, z: ws.z, r: 2.4, hold: 2.5, label: 'Take split firewood', amount: [4, 4], uses: 1 });
@@ -360,10 +360,10 @@ export function buildWorld(scene, assets, col) {
     // forest: pines/firs everywhere in the woods except trails, pond and structures
     const woodsPoly = AREAS.find((a) => a.id === 'woods').poly;
     let placed = 0;
-    for (let i = 0; i < 2200 && placed < 440; i++) {
+    for (let i = 0; i < 2200 && placed < 340; i++) {
       const x = -150 + rng() * 106, z = -130 + rng() * 170;
       if (!pointInPoly(x, z, woodsPoly)) continue;
-      if (distToPolyline(x, z, TRAILS[0]) < 4.2) continue;
+      if (distToPolyline(x, z, TRAILS[0]) < 6.5) continue;
       if (!free(x, z, 1.6)) continue;
       if (x > -80 && z > -8 && z < 32) continue; // park wall side
       const r = rng();
@@ -450,7 +450,7 @@ function snowBanks(scene, rng) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.computeVertexNormals();
   const m = new THREE.MeshStandardMaterial({ color: '#eef2fa', roughness: 0.85, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
-  const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true; scene.add(mesh);
+  const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true; mesh.userData.noSeeThrough = true; scene.add(mesh);
 }
 
 const paintCache = new Map();

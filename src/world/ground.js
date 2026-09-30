@@ -68,7 +68,7 @@ export function buildGround(scene, { waterPolys, trailLines, darkPolys }) {
   g.computeVertexNormals();
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, flatShading: true });
   const mesh = new THREE.Mesh(g, m);
-  mesh.receiveShadow = true; mesh.name = 'snowGround';
+  mesh.receiveShadow = true; mesh.name = 'snowGround'; mesh.userData.noSeeThrough = true;
   scene.add(mesh);
   return mesh;
 }
@@ -114,7 +114,7 @@ export function surface(scene, kind, x, z, w, d, rot = 0, y = 0.04, repeat = 8) 
   const uv = g.attributes.uv;
   for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / repeat, uv.getY(i) * d / repeat);
   const mesh = new THREE.Mesh(g, surfMat(kind));
-  mesh.position.set(x, y, z); mesh.rotation.y = rot;
+  mesh.position.set(x, y, z); mesh.rotation.y = rot; mesh.userData.noSeeThrough = true;
   mesh.receiveShadow = true; mesh.matrixAutoUpdate = false; mesh.updateMatrix();
   scene.add(mesh);
   return mesh;
@@ -129,7 +129,7 @@ export function polySurface(scene, kind, poly, y = 0.03, repeat = 10) {
   const p = g.attributes.position, uv = g.attributes.uv;
   for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / repeat, p.getZ(i) / repeat);
   const mesh = new THREE.Mesh(g, surfMat(kind));
-  mesh.position.y = y; mesh.receiveShadow = true;
+  mesh.position.y = y; mesh.receiveShadow = true; mesh.userData.noSeeThrough = true;
   scene.add(mesh);
   return mesh;
 }
@@ -156,7 +156,7 @@ export function water(scene, poly, color = PAL.water, y = -0.35, cell = 2.2) {
   const mesh = new THREE.Mesh(g, m);
   mesh.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
   mesh.receiveShadow = true;
-  mesh.userData.uniforms = uniforms;
+  mesh.userData.uniforms = uniforms; mesh.userData.noSeeThrough = true;
   scene.add(mesh);
   return mesh;
 }

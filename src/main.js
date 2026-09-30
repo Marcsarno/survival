@@ -17,12 +17,13 @@ import { Inventory, USE_KEYS, ITEMS } from './systems/inventory.js';
 import { Audio } from './systems/audio.js';
 import { UI } from './ui/hud.js';
 import { PAL } from './palette.js';
+import { makeSeeThrough, updateSeeThrough } from './core/seethrough.js';
 
 const params = new URLSearchParams(location.search);
 const SAVE_KEY = 'sarno-survive-save-v1';
 const TELEPORTS = {
   f1: ['Pavilion Park', -60, 16], f2: ['Coral Palm Drive', 40, 1], f3: ['Sunflower Tot Lot', 39, -14], f4: ['Pelican Pharmacy', 18, -76],
-  f5: ['Canal Walk', 30, 56], f6: ['Beach', 122, 0], f7: ['Frozen Pond', -104, -36], f8: ['Abandoned Camp', -40, -76], f9: ['Woodshed', -96, -4],
+  f5: ['Canal Walk', 30, 56], f6: ['Beach', 122, 0], f7: ['Frozen Pond', -104, -36], f8: ['Abandoned Camp', -40, -76], f9: ['Woodshed', -100, 4],
 };
 
 class Game {
@@ -61,6 +62,7 @@ class Game {
       pl.position.set(l.x, l.y, l.z); this.scene.add(pl); this.lights[l.kind] = pl;
     }
     const post = new THREE.PointLight(PAL.lanternLight, 0, 26, 1.5); post.position.set(SHELTER.post.x + 0.8, 2.6, SHELTER.post.z); this.scene.add(post); this.lights.post = post;
+    this.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && !o.userData.noSeeThrough) makeSeeThrough(o.material); });
     this.daynight = new DayNight(this.scene, this.renderer, this.quality);
     this.snow = new Snowfall(this.scene, this.quality.low ? 900 : 1800);
     this.footprints = new Footprints(this.scene, 900);
@@ -124,6 +126,8 @@ class Game {
     if (!this.paused) this.update(dt);
     else { this.player.mixer.update(0); }
     this.camera.update(dt, this.player.pos);
+    this._stTarget = (this._stTarget || this.player.pos.clone()).copy(this.player.pos); this._stTarget.y += 1.0;
+    updateSeeThrough(this.camera.cam, this.renderer, this._stTarget);
     this.renderer.render(this.scene, this.camera.cam);
     this.input.endFrame();
     if (params.has('debug')) this.debugOverlay();

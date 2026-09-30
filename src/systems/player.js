@@ -67,7 +67,7 @@ export class Player {
     const g = this.game, st = this.stats;
     this.mixer.update(dt);
     if (this.dead) return;
-    this.cooldown = Math.max(0, this.cooldown - dt); this.hurtT = Math.max(0, this.hurtT - dt); this.meleeT = Math.max(0, this.meleeT - dt);
+    this.graceT = Math.max(0, (this.graceT || 0) - dt); this.cooldown = Math.max(0, this.cooldown - dt); this.hurtT = Math.max(0, this.hurtT - dt); this.meleeT = Math.max(0, this.meleeT - dt);
 
     // ---- aim (right mouse / touch aim button)
     const aimHeld = input.mouse.right || input.tDown('aim');
@@ -136,6 +136,10 @@ export class Player {
     // ---- melee (axe swing or shove)
     if ((input.hit('f') || input.tHit('melee')) && this.meleeT <= 0 && !g.ui.modal && st.stamina > 8) {
       this.meleeT = 0.75; st.stamina -= 10;
+      // forgiving melee: turn toward the nearest zombie in reach
+      let best = null, bd = 2.8;
+      for (const z of g.zombies.alive()) { const d = z.obj.position.distanceTo(this.pos); if (d < bd) { bd = d; best = z; } }
+      if (best) this.yaw = Math.atan2(best.obj.position.x - this.pos.x, best.obj.position.z - this.pos.z);
       this.axe.visible = g.tools.axe;
       this.oneShot = g.tools.axe ? 'Sword_Slash' : 'Punch_Right';
       this.play(this.oneShot, { once: true, speed: 1.4, fade: 0.08 });
@@ -165,6 +169,8 @@ export class Player {
   hurt(amount, from) {
     if (this.dead) return;
     const g = this.game;
+    if (this.graceT > 0 && amount < 100) return;   // brief grace after each hit so groups can't stun-lock
+    this.graceT = 0.7;
     this.stats.health = Math.max(0, this.stats.health - amount);
     g.ui.flashDamage(); g.camera.shake = 0.35; g.audio?.hurt();
     if (this.hurtT <= 0 && !this.aim.on) { this.hurtT = 0.8; this.oneShot = 'HitRecieve'; this.play('HitRecieve', { once: true, speed: 1.5, fade: 0.05 }); }

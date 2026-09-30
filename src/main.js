@@ -18,6 +18,7 @@ import { Audio } from './systems/audio.js';
 import { UI } from './ui/hud.js';
 import { PAL } from './palette.js';
 import { makeSeeThrough, updateSeeThrough } from './core/seethrough.js';
+import { Goals } from './systems/goals.js';
 
 const params = new URLSearchParams(location.search);
 const SAVE_KEY = 'sarno-survive-save-v1';
@@ -77,6 +78,8 @@ class Game {
     this.interact = new Interactions(this, this.world.interact);
     this.audio = new Audio();
     this.ui = new UI(this);
+    this.goals = new Goals(this);
+    this.goals.update(1);
     if (params.has('t')) this.daynight.hour = parseFloat(params.get('t'));
     if (!params.has('fresh')) this.load();
     if (params.has('at')) { const [x, z] = params.get('at').split(',').map(Number); this.player.setPosition(x, z); }
@@ -95,6 +98,7 @@ class Game {
     this.last = performance.now();
     this.renderer.setAnimationLoop(() => this.frame());
     window.__game = this;
+    if (params.has('debug')) addEventListener('error', (e) => this.ui.toast('JS error: ' + e.message, 'bad', 10000));
   }
 
   start() {
@@ -178,6 +182,7 @@ class Game {
     const a = areaAt(this.player.pos.x, this.player.pos.z);
     if (a && a.id !== this.areaId) { this.areaId = a.id; this.ui.banner(a); this.stats.areas.add(a.id); }
     this.ui.update();
+    this.goals.update(dt);
     this._saveT = (this._saveT || 0) + dt;
     if (this._saveT > 30) { this._saveT = 0; this.save(); }
   }

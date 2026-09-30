@@ -22,6 +22,12 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2230; fon
 .meter.oil > div { background: #ffd27a; }
 #clock { position: absolute; right: max(14px, env(safe-area-inset-right)); top: max(12px, env(safe-area-inset-top)); background: rgba(15,20,30,.45); padding: 8px 12px; border-radius: 10px; text-align: right; display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
 #clock-time { font-size: 20px; font-weight: 700; }
+#goals { position: absolute; right: max(14px, env(safe-area-inset-right)); top: 160px; width: 250px; background: rgba(15,20,30,.45); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; line-height: 1.45; }
+#goals b { display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #ffd27a; margin-bottom: 2px; }
+body.touch #goals { top: 124px; left: 12px; right: auto; width: min(62vw, 260px); font-size: 11.5px; padding: 5px 9px; }
+body.touch #goals div:nth-child(n+3) { display: none; }
+body.touch #toasts { top: 178px; max-width: 70vw; }
+@media (max-width: 640px) { #goals { width: 190px; font-size: 11.5px; } }
 #clock-day { font-size: 12px; opacity: .75; }
 .corner-btn { pointer-events: auto; position: absolute; top: 74px; right: max(14px, env(safe-area-inset-right)); width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(15,20,30,.5); color: #fff; font-size: 16px; cursor: pointer; }
 #btn-map { top: 116px; }
@@ -48,7 +54,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1b2230; fon
 #damage-vignette { background: radial-gradient(ellipse at center, transparent 55%, rgba(170,20,20,.65) 100%); transition: opacity .35s; }
 #cold-vignette { background: radial-gradient(ellipse at center, transparent 45%, rgba(170,210,255,.55) 100%); transition: opacity 1s; }
 #fade { background: #0b0f16; transition: opacity 1.2s; }
-#shelter-panel { position: absolute; right: max(14px, env(safe-area-inset-right)); top: 160px; width: 260px; background: rgba(15,20,30,.78); border-radius: 12px; padding: 12px; pointer-events: auto; font-size: 13px; }
+#shelter-panel { position: absolute; right: max(14px, env(safe-area-inset-right)); top: 160px; z-index: 2; width: 260px; background: rgba(15,20,30,.78); border-radius: 12px; padding: 12px; pointer-events: auto; font-size: 13px; }
 #shelter-panel h3 { margin: 0 0 6px; font-size: 15px; }
 #shelter-panel .row { display: flex; justify-content: space-between; margin: 3px 0; }
 #shelter-panel button { pointer-events: auto; width: 100%; margin-top: 6px; padding: 7px; border-radius: 7px; border: none; background: #3b4a63; color: #fff; font-size: 13px; cursor: pointer; text-align: left; }
@@ -80,7 +86,9 @@ body.touch #progress { bottom: 236px; }
 .help-box ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.55; }
 .help-box .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 @media (max-width: 640px) { .help-box .cols { grid-template-columns: 1fr; } .help-box { padding: 16px; } }
-.help-actions { margin-top: 18px; display: flex; gap: 10px; }
+.help-actions { margin-top: 18px; display: flex; gap: 10px; position: sticky; bottom: -22px; background: #1d2635; padding: 10px 0 14px; }
+body.touch .kbd-help { display: none; }
+body.touch .help-box .cols { grid-template-columns: 1fr; }
 .help-actions button { padding: 10px 22px; border-radius: 9px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; background: #3b4a63; color: #fff; }
 .help-actions button.primary { background: #e08a3c; }
 

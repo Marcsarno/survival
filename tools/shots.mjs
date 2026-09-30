@@ -23,7 +23,7 @@ const SPOTS = {
   woods: { at: [-100, 8], hour: 15, level: 2 },
   pond: { at: [-112, -33], hour: 8, level: 3 },
   camp: { at: [-38, -74], hour: 18.2, level: 2 },
-  cinematic: { at: [52, 7], hour: 16, level: 2, cinematic: true },
+  cinematic: { at: [47, 7], hour: 16, level: 2, cinematic: true },
   // close-ups for in-game asset checks (cinematic camera)
   closeAim: { at: [20, -66], hour: 11, level: 0, cinematic: true, setup: 'aim' },
   closeLantern: { at: [40, 3], hour: 22.5, level: 0, cinematic: true, lantern: true },

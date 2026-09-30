@@ -215,8 +215,8 @@ export function buildWorld(scene, assets, col) {
       addI({ kind: 'note', x, z, r: 1.6, label: 'Poke the frozen iguana', text: iguanaLines[i] });
     });
     for (const [x, z, ry] of [[35, 9.2, 0.5], [36.1, 9.9, -0.3], [-8, -8.8, 2.4], [66.5, 9.4, 1.0], [-3.2, -9.0, 3.3], [68, 49.8, 0.2]]) place('flamingo', x, z, ry, 1);
-    place('snowman', 55, 9.6, Math.PI + 0.3, 1, 0.45);
-    addI({ kind: 'note', x: 55, z: 9.6, r: 1.9, label: 'Look at the snowman', text: 'Bottle-cap buttons, a beach-bucket hat, a carrot nose. Kids built this, and not long ago. The first snowman this street has ever seen.' });
+    place('snowman', 45.4, 9.6, Math.PI + 0.3, 1, 0.45);
+    addI({ kind: 'note', x: 45.4, z: 9.6, r: 1.9, label: 'Look at the snowman', text: 'Bottle-cap buttons, a beach-bucket hat, a carrot nose. Kids built this, and not long ago. The first snowman this street has ever seen.' });
     place('snowman', 46.5, -25.5, 0.4, 0.8, 0.4);
     place('radio', 123.4, -10.4, -1.2, 1.2, 0);
     B.crate(b, col, mtx(123.4, 0, -10.4, 0.2), 0.5);

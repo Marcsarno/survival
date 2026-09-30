@@ -11,6 +11,7 @@ const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL6 = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 const CYL8 = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
 const SNOW = () => stdMat(PAL.snow, { roughness: 0.8 });
+const DRIFT = new THREE.IcosahedronGeometry(1, 0);
 
 /** place a unit box: center (x,y,z) in local space, size (sx,sy,sz) */
 function box(b, P, mat, x, y, z, sx, sy, sz, ry = 0, rx = 0, rz = 0, opts) {
@@ -103,13 +104,23 @@ export function house(b, col, P, o) {
     box(b, P, stdMat('#6b5a3a'), doorX + s * 0.9, 1.98, d / 2 + 0.19, 0.1, 0.16, 0.02);
   }
   box(b, P, stdMat(PAL.concrete), doorX, 0.08, d / 2 + 0.7, 1.8, 0.16, 1.3); // step
+  // projecting garage wing with its own roof (L-shaped ranch houses, concept 05)
+  const wing = garage && (o.wing ?? rng() < 0.6);
+  const wingD = 3.6, gz = wing ? d / 2 + wingD - 1.0 : d / 2;
+  if (wing) {
+    const wx = -w / 2 + 1.95, wz = d / 2 + wingD / 2 - 1.0;
+    box(b, P, wall, wx, h * 0.45, wz, 3.9, h * 0.9, wingD);
+    box(b, P, stdMat(shade(o.color || PAL.stucco[0], 0.8)), wx, 0.18, wz, 3.98, 0.36, wingD + 0.08);
+    roof(b, P.clone().multiply(mtx(wx, 0, wz)), 4.7, wingD + 0.9, h * 0.9, 1.2, (o.seed || 1) + 3, o.snow ?? 0.62);
+    colBox(col, P, wx, wz, 1.97, wingD / 2 + 0.03, 0, 'house');
+  }
   if (garage) {
     const gx = -w / 2 + 1.9;
-    box(b, P, stdMat(pick(rng, PAL.garage)), gx, 1.15, d / 2 + 0.04, 2.9, 2.3, 0.08);
-    for (let i = 1; i < 4; i++) box(b, P, stdMat(shade(PAL.garage[0], 0.75)), gx, 0.1 + i * 0.55, d / 2 + 0.09, 2.85, 0.04, 0.02);
+    box(b, P, stdMat(pick(rng, PAL.garage)), gx, 1.15, gz + 0.04, 2.9, 2.3, 0.08);
+    for (let i = 1; i < 4; i++) box(b, P, stdMat(shade(PAL.garage[0], 0.75)), gx, 0.1 + i * 0.55, gz + 0.09, 2.85, 0.04, 0.02);
     if (rng() < 0.4) { // boarded garage (concept 05)
-      box(b, P, board, gx, 1.2, d / 2 + 0.13, 3.2, 0.22, 0.05, 0, 0, 0.62);
-      box(b, P, board, gx, 1.2, d / 2 + 0.14, 3.2, 0.22, 0.05, 0, 0, -0.62);
+      box(b, P, board, gx, 1.2, gz + 0.13, 3.2, 0.22, 0.05, 0, 0, 0.62);
+      box(b, P, board, gx, 1.2, gz + 0.14, 3.2, 0.22, 0.05, 0, 0, -0.62);
     }
     windowAt(w * 0.36, d / 2, 0, 1.2, 1.1);
   } else {
@@ -129,7 +140,12 @@ export function house(b, col, P, o) {
     box(b, P, snow, w / 2 + 0.45, 0.88, -d * 0.2, 0.84, 0.08, 0.84);
   }
   colBox(col, P, 0, 0, w / 2 + 0.05, d / 2 + 0.05, 0, 'house');
-  return { door: worldPos(P, doorX, 0, d / 2 + 1.3), doorX, garage: garage ? worldPos(P, -w / 2 + 1.9, 0, d / 2 + 1.5) : null };
+  // snow drifted against the walls
+  const drift = (x, z, sx, sz, ry) => b.add(DRIFT, SNOW(), P.clone().multiply(mtx(x, 0.02, z, ry, sx, 0.28 + rng() * 0.12, sz)));
+  for (let i = 0; i < 3; i++) drift(-w / 2 + 1 + rng() * (w - 2), -d / 2 - 0.3, 0.7 + rng() * 0.8, 0.45, rng());
+  for (const sx of [-1, 1]) drift(sx * (w / 2 + 0.3), -d / 4 + rng() * d / 2, 0.45, 0.7 + rng() * 0.6, rng());
+  if (!garage || rng() < 0.5) drift(w / 2 - 0.8, d / 2 + 0.3, 0.8, 0.4, 0.2);
+  return { door: worldPos(P, doorX, 0, d / 2 + 1.3), doorX, garage: garage ? worldPos(P, -w / 2 + 1.9, 0, gz + 1.5) : null };
 }
 
 // ------------------------------------------------------------------ small props

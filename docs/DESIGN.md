@@ -52,6 +52,7 @@ This is the shared record of material decisions for the prototype. The user's vi
 | Walk / sprint speed | 2.7 / 4.8 m/s; ×0.92 in snow off pavement |
 | Stamina | Sprint drains 16/s |
 | Warmth drain outside | 0.28/s by day, up to 0.58/s at night (full to empty in about 3–6 min). The lantern cuts it by 25%. Standing by the fire regains 7/s. At zero warmth, health drops 1.2/s. |
+| Hunger | Drains 100 → 0 over one in-game day (24 min). Food adds 50. When empty, stamina recovers at half speed and warmth drains 25% faster. Sleeping costs 25. |
 | Fire | Burns 0.2 fuel/s (0.12 with the windbreak). Wood adds 22. Relighting costs one match and one wood. |
 | Pack | 10 slots; the hiking backpack adds 6 |
 | Frozen | 3 hp. Speed 1.35 m/s by day, 1.9 at night. They hit for 9 (13 at night) every 1.7 s, and the player gets a 0.7 s grace period after each hit. Sight is 11 m by day, 6 m at night, and 16 m if your lantern is lit. Hearing grows with noise. |

@@ -41,6 +41,8 @@ export class Audio {
     o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
   }
 
+  toggleMute() { this.muted = !this.muted; if (this.master) this.master.gain.value = this.muted ? 0 : 0.55; return !this.muted; }
+
   update(game) {
     if (!this.ctx) return;
     const n = game.daynight.nightness;

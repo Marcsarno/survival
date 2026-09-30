@@ -34,7 +34,7 @@ export class Player {
     ring.rotation.x = -Math.PI / 2; ring.renderOrder = 10; ring.position.y = 0.05; this.obj.add(ring);
 
     this.pos = this.obj.position; this.yaw = 0; this.vel = new THREE.Vector3();
-    this.stats = { health: 100, warmth: 100, stamina: 100, oil: 60 };
+    this.stats = { health: 100, warmth: 100, stamina: 100, oil: 60, food: 80 };
     this.lanternOn = false;
     this.state = 'idle'; this.stepDist = 0; this.stepSide = 1;
     this.aim = { on: false, focus: 0, target: null, dir: new THREE.Vector3(0, 0, 1) };
@@ -122,7 +122,7 @@ export class Player {
 
     // ---- stamina
     if (sprinting && moving) st.stamina = Math.max(0, st.stamina - dt * 16);
-    else st.stamina = Math.min(100, st.stamina + dt * (moving ? 7 : 14));
+    else st.stamina = Math.min(100, st.stamina + dt * (moving ? 7 : 14) * ((st.food ?? 100) <= 0 ? 0.5 : 1));
 
     // ---- lantern
     if ((input.hit('l') || input.tHit('lantern')) && !g.ui.modal) this.toggleLantern();

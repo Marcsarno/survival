@@ -212,13 +212,17 @@ class Game {
   updateSurvival(dt) {
     const s = this.player.stats, p = this.player.pos;
     if (this.player.dead) return;
+    // hunger: full to empty in about one in-game day
+    s.food = Math.max(0, (s.food ?? 100) - dt * (100 / 1440));
+    if (s.food <= 0 && !this._hungryWarn) { this._hungryWarn = true; this.ui.toast('Your stomach is empty. Eat something (1) — you tire and chill faster.', 'bad', 5000); }
+    if (s.food > 10) this._hungryWarn = false;
     const nearFire = this.shelter.lit && this.shelter.distToFire(p) < this.shelter.warmZone;
     const sheltered = this.shelter.upgrades.windbreak && this.shelter.inShelter(p);
     if (nearFire) {
       s.warmth = Math.min(100, s.warmth + dt * 7);
       if (s.warmth > 60) s.health = Math.min(100, s.health + dt * 0.6);
     } else if (!sheltered) {
-      let drain = (0.28 + 0.3 * this.daynight.nightness) * (1 + 0.35 * (this.weather?.squall || 0));
+      let drain = (0.28 + 0.3 * this.daynight.nightness) * (1 + 0.35 * (this.weather?.squall || 0)) * ((s.food ?? 100) <= 0 ? 1.25 : 1);
       if (this.player.lanternOn) drain *= 0.75;
       s.warmth = Math.max(0, s.warmth - drain * dt);
     }
@@ -234,7 +238,7 @@ class Game {
   useItem(id) {
     const s = this.player.stats;
     if (!this.inv.count(id)) { if (ITEMS[id]) this.ui.toast(`No ${ITEMS[id].name.toLowerCase()}.`, 'bad'); return; }
-    if (id === 'food') { s.health = Math.min(100, s.health + 25); s.warmth = Math.min(100, s.warmth + 12); this.ui.toast('You eat cold beans. Better. (+health, +warmth)', 'good'); }
+    if (id === 'food') { s.health = Math.min(100, s.health + 20); s.warmth = Math.min(100, s.warmth + 10); s.food = Math.min(100, (s.food ?? 0) + 50); this.ui.toast('You eat cold beans. Better. (+food, +health, +warmth)', 'good'); }
     else if (id === 'water') { s.stamina = 100; s.health = Math.min(100, s.health + 8); this.ui.toast('Icy water. (+stamina)', 'good'); }
     else if (id === 'medkit') { if (s.health >= 100) { this.ui.toast('You are not hurt.', 'info'); return; } s.health = Math.min(100, s.health + 55); this.ui.toast('You patch yourself up. (+health)', 'good'); }
     else if (id === 'oil') { if (s.oil >= 98) { this.ui.toast('The lantern is full.', 'info'); return; } s.oil = Math.min(100, s.oil + 55); this.ui.toast('Lantern refilled.', 'good'); }
@@ -254,7 +258,7 @@ class Game {
       if (items.ammo) { this.inv.add('ammo', 0); }
       this.player.revive();
       this.player.setPosition(START.x, START.z);
-      Object.assign(this.player.stats, { health: 60, warmth: 80, stamina: 100 });
+      Object.assign(this.player.stats, { health: 60, warmth: 80, stamina: 100, food: Math.max(this.player.stats.food ?? 0, 30) });
       if (this.daynight.hour > 7) this.daynight.day++;
       this.daynight.hour = 7.2;
       this.zombies.resetAll();
@@ -271,12 +275,12 @@ class Game {
       const s = this.player.stats;
       if (full) {
         if (this.daynight.hour > 7) this.daynight.day++;
-        this.daynight.hour = 7.0; s.health = 100; s.warmth = 100; s.stamina = 100;
+        this.daynight.hour = 7.0; s.health = 100; s.warmth = 100; s.stamina = 100; s.food = Math.max(0, (s.food ?? 100) - 25);
         this.shelter.fuel = Math.max(0, this.shelter.fuel - 30); if (this.shelter.fuel <= 0) this.shelter.lit = false;
         this.zombies.resetAll();
       } else {
         this.daynight.hour += 2; if (this.daynight.hour >= 24) { this.daynight.hour -= 24; this.daynight.day++; }
-        s.health = Math.min(100, s.health + 20); s.warmth = 100;
+        s.health = Math.min(100, s.health + 20); s.warmth = 100; s.food = Math.max(0, (s.food ?? 100) - 8);
         this.shelter.fuel = Math.max(1, this.shelter.fuel - 15);
       }
       this.daynight.apply(this.player.pos);

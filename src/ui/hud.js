@@ -7,12 +7,13 @@ const $ = (id) => document.getElementById(id);
 export class UI {
   constructor(game) {
     this.game = game; this.modal = null; this.lastInv = '';
-    this.el = { health: $('m-health'), warmth: $('m-warmth'), stamina: $('m-stamina'), oil: $('m-oil'), time: $('clock-time'), day: $('clock-day'),
+    this.el = { health: $('m-health'), warmth: $('m-warmth'), stamina: $('m-stamina'), oil: $('m-oil'), food: $('m-food'), time: $('clock-time'), day: $('clock-day'),
       prompt: $('prompt'), progress: $('progress'), progressFill: $('progress-fill'), toasts: $('toasts'), inv: $('inventory'), banner: $('area-banner'),
       reticle: $('reticle'), ammo: $('ammo'), dmg: $('damage-vignette'), cold: $('cold-vignette'), fade: $('fade'), shelter: $('shelter-panel'),
       help: $('help'), map: $('map-overlay'), mapCanvas: $('map-canvas'), debug: $('debug') };
     $('btn-help').onclick = () => this.toggleHelp();
     $('btn-map').onclick = () => this.toggleMap();
+    $('btn-mute').onclick = () => { const on = game.audio.toggleMute(); $('btn-mute').textContent = on ? '🔊' : '🔇'; };
     this.el.map.onclick = () => this.toggleMap(false);
     this.el.inv.addEventListener('click', (e) => { const s = e.target.closest('.slot'); if (s?.dataset.item) game.useItem(s.dataset.item); });
   }
@@ -48,7 +49,7 @@ export class UI {
   update() {
     const g = this.game, s = g.player.stats;
     this.el.health.style.width = `${s.health}%`; this.el.warmth.style.width = `${s.warmth}%`;
-    this.el.stamina.style.width = `${s.stamina}%`; this.el.oil.style.width = `${s.oil}%`;
+    this.el.stamina.style.width = `${s.stamina}%`; this.el.oil.style.width = `${s.oil}%`; this.el.food.style.width = `${s.food ?? 100}%`;
     this.el.time.textContent = g.daynight.timeString(); this.el.day.textContent = `Day ${g.daynight.day}${g.daynight.isNight ? ' · night' : ''}`;
     this.el.cold.style.opacity = Math.max(0, (40 - s.warmth) / 40) * 0.9;
     this.refreshInventory();

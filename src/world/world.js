@@ -385,6 +385,13 @@ export function buildWorld(scene, assets, col) {
     const wsLamp = assets.clone('lantern'); wsLamp.position.set(ws.x + 1.4, 1.4, ws.z - 1.6); scene.add(wsLamp);
     B.crate(b, col, mtx(ws.x + 2, 0, ws.z - 2.4, 0.2), 0.6);
     addI({ kind: 'search', x: ws.x + 2.6, z: ws.z - 2.9, r: 1.6, hold: 1.2, label: 'Check crate', loot: { matches: 2, oil: 1 } });
+    // dead pines (snags) to chop with the axe: a big bundle of firewood each
+    for (const [x, z, ry] of [[-88, -1, 0.3], [-99, -24, 1.4], [-110, -24, 2.2], [-97, -47, 0.8], [-91, -69, 2.9], [-70, -85, 1.9], [-111, 13, 0.6]]) {
+      const snag = assets.clone('snag'); snag.position.set(x, 0, z); snag.rotation.y = ry; scene.add(snag);
+      const c = col.circle(x, z, 0.38, 'tree');
+      addI({ kind: 'chop', x: x + 1.1, z: z + 0.6, r: 2.2, hold: 3.2, label: 'Chop down the dead pine', obj: snag, collider: c, tx: x, tz: z, needsAxe: true });
+      block(x, z, 2.8);
+    }
     // forest: pines/firs everywhere in the woods except trails, pond and structures
     const woodsPoly = AREAS.find((a) => a.id === 'woods').poly;
     let placed = 0;

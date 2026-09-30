@@ -2,7 +2,7 @@
 
 - **Last full run:** 2026-09-30, against a fresh clone of `github.com/Marcsarno/survival`, built with `npm install && npm run build` and served with `vite preview`.
 - **Harness:** `tools/playtest.mjs`, Playwright Chromium with the GPU (ANGLE/D3D11), 1280×720, Windows 11.
-- **Result:** 29 passed, 0 failed (the zombie pathfinding check was added later). The raw JSON is written to `playtest-output/results.json`; screenshots go to `docs/screenshots/`.
+- **Result:** 30 passed, 0 failed. The zombie pathfinding and tree-chopping checks were added after the first report. The raw JSON is written to `playtest-output/results.json`; screenshots go to `docs/screenshots/`.
 
 All movement, gathering, searching, combat and UI actions went through real keyboard, mouse and pointer input. Two test shortcuts were used, and both are labelled in the results:
 1. Teleports that only place the player next to a wall for the collision test.
@@ -20,6 +20,7 @@ Everything else was reached by walking.
 | 4 | Park → woods trail → woodshed | Reached on foot through the west gate |
 | 5 | Gather wood | 0 → 4 split firewood (hold E) |
 | 6 | Take the axe | Axe flag set |
+| 6b | Chop a dead pine (axe) | Wood 4 → 8; the tree was replaced by a stump (`03b-chopped.png`) |
 | 7 | Woodshed → shelter | Walked back |
 | 8 | Store in the stash | Stash wood went 2 → 6 and the pack emptied (`04-stash-panel.png`) |
 | 9 | Feed the fire | Fuel 44.9 → 66.8 |

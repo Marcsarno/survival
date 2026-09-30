@@ -4,6 +4,7 @@ export const GOALS = [
   { id: 'wood', text: 'Bring firewood back to the shelter stash', done: (g) => g.shelter.stash.count('wood') >= 5 || g.stats.woodBurned >= 1 },
   { id: 'feed', text: 'Feed the fire (E at the fire pit)', done: (g) => g.stats.woodBurned >= 1 },
   { id: 'axe', text: 'Find the axe at the woodshed in the pines', done: (g) => g.tools.axe },
+  { id: 'chop', text: 'Chop down a dead pine with the axe', done: (g) => (g.stats.chopped || 0) >= 1 },
   { id: 'search', text: 'Search 3 porches, cars or mailboxes', done: (g) => g.stats.searched >= 3 },
   { id: 'gun', text: 'Check the police cruiser on Hibiscus Lane', done: (g) => g.tools.pistol },
   { id: 'meds', text: 'Scavenge the Pelican Pharmacy', done: (g) => g.interact.list.some((i) => i.label === 'Search pharmacy aisles' && i.used) },

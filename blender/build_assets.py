@@ -340,6 +340,20 @@ def build_car(name, seed, kind):
     b.ico(Vector((L * 0.36, 0, 0.32 + body_h + 0.01)), 0.6, snow, scale=(1.0, W * 0.6, 0.12), jitter=0.12, rng=rng)
     return b.finish()
 
+def build_snag(name, seed, H):
+    """A dead, bare slash pine (a 'snag') for chopping: grey trunk, broken branch stubs, snow on top."""
+    rng = random.Random(seed); b = Builder(name)
+    bark, dark, snow = mat("DeadBark", "#6e6259"), mat("DeadBarkDark", "#4f463f"), mat("Snow", PAL["snow"], 0.8)
+    lean = Vector((rng.uniform(-0.3, 0.3), rng.uniform(-0.3, 0.3), 0))
+    b.cone(Vector((0, 0, -0.1)), Vector((0, 0, H)) + lean, 0.3, 0.07, bark, segs=6, rng=rng, tag="wood")
+    for i in range(rng.randint(4, 6)):
+        t = rng.uniform(0.35, 0.9); a = rng.uniform(0, math.tau)
+        base = Vector((0, 0, H * t)) + lean * t
+        tip = base + Vector((math.cos(a), math.sin(a), rng.uniform(0.1, 0.6))) * rng.uniform(0.6, 1.6) * (1.1 - t)
+        b.cone(base, tip, 0.07, 0.015, dark if i % 2 else bark, segs=4, rng=rng, tag="wood")
+    b.snow("wood", snow, thresh=0.55, rng=rng)
+    return b.finish()
+
 def build_iguana(name, seed):
     """A cold-stunned green iguana lying belly-up under a palm (a South Florida cold-snap classic)."""
     rng = random.Random(seed); b = Builder(name)
@@ -553,6 +567,7 @@ for i, r in enumerate((0.8, 1.4)):
 JOBS.append(("lantern", lambda: gen("lantern", lambda: build_lantern("lantern"))))
 JOBS.append(("car-sedan", lambda: gen("car-sedan", lambda: build_car("car-sedan", 91, "sedan"))))
 JOBS.append(("car-suv", lambda: gen("car-suv", lambda: build_car("car-suv", 92, "suv"))))
+JOBS.append(("snag", lambda: gen("snag", lambda: build_snag("snag", 111, 6.0))))
 JOBS.append(("iguana", lambda: gen("iguana", lambda: build_iguana("iguana", 101))))
 JOBS.append(("flamingo", lambda: gen("flamingo", lambda: build_flamingo("flamingo", 102))))
 JOBS.append(("snowman", lambda: gen("snowman", lambda: build_snowman("snowman", 103))))

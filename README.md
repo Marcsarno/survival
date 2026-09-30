@@ -46,7 +46,7 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 | Hibiscus Lane | Side-street houses and an abandoned police cruiser with the pistol |
 | Pelican Pharmacy | Parking lot, the frozen (zombies), medkits in the aisles, ammo in the stockroom |
 | Service Road & Abandoned Camp | Tents, crates, an evacuation sign |
-| Slash Pine Woods | Woodshed with split firewood and the axe, fallen logs, the frozen pond, deer, foxes, rabbits, an owl at night, wolves late at night |
+| Slash Pine Woods | Woodshed with split firewood and the axe, dead pines to chop down, fallen logs, the frozen pond, deer, foxes, rabbits, an owl at night, wolves late at night |
 | Canal Homes | Backyards, patios and docks on the intracoastal, ice floes, ducks |
 | Deerfield Beach Access | Sand and snow, dune fences, lifeguard stand, snack hut, driftwood |
 

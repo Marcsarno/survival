@@ -156,7 +156,8 @@ export class Player {
     const busy = this.oneShot && this.current && this.current.isRunning();
     if (!busy) {
       this.axe.visible = false;
-      if (this.interacting) this.play('Interact');
+      if (this.interacting?.kind === 'chop') { this.play('Sword_Slash', { speed: 1.25 }); this.axe.visible = true; }
+      else if (this.interacting) this.play('Interact');
       else if (this.aim.on) this.play(moving ? 'Walk' : 'Idle_Gun_Pointing', { speed: moving ? 0.6 : 1 });
       else if (moving) this.play(sprinting ? 'Run' : 'Walk', { speed: sprinting ? 0.95 : 0.85 * mv.len + 0.25 });
       else this.play('Idle');

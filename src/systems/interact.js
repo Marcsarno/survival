@@ -16,7 +16,7 @@ export class Interactions {
       m.position.set(i.x, i.my || 0, i.z); m.rotation.set(i.mrx || 0, i.mry || 0, 0);
       g.scene.add(m); i.mesh = m;
     }
-    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack', 'radio', 'well'].includes(i.kind)) {
+    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack', 'radio', 'well', 'chop'].includes(i.kind)) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false, opacity: 0, fog: false }));
       s.scale.setScalar(0.55); s.position.set(i.x, 1.5, i.z); s.renderOrder = 5;
       g.scene.add(s); i.marker = s;
@@ -56,10 +56,16 @@ export class Interactions {
     const i = this.current;
     if (!i || g.ui.modal && g.ui.modal !== 'shelter') { g.ui.setPrompt(null); g.ui.setProgress(null); g.player.interacting = null; return; }
     const verb = g.input.isTouch ? '<kbd>E</kbd>' : (i.hold ? '<kbd>E</kbd> hold' : '<kbd>E</kbd>');
+    if (i.needsAxe && !g.tools.axe) {
+      g.ui.setPrompt(`${i.label} <small>(needs an axe — try the woodshed)</small>`); g.ui.setProgress(null); g.player.interacting = null;
+      if (pressed) g.ui.toast('The trunk is frozen hard. You need an axe.', 'info');
+      return;
+    }
     g.ui.setPrompt(`${verb} ${i.label}${this.extra(i)}`);
     if (i.hold > 0) {
       if (held) {
         this.progress += dt; g.player.interacting = i;
+        if (i.kind === 'chop') { this.chopT = (this.chopT || 0) - dt; if (this.chopT <= 0) { this.chopT = 0.62; g.audio?.chop(); g.camera.shake = 0.05; } }
         g.ui.setProgress(this.progress / i.hold);
         if (this.progress >= i.hold) { this.progress = 0; g.player.interacting = null; g.ui.setProgress(null); this.apply(i); }
       } else { this.progress = 0; g.player.interacting = null; g.ui.setProgress(null); }
@@ -104,6 +110,17 @@ export class Interactions {
         break;
       }
       case 'note': ui.toast(i.text, 'info', 9000); i.label = i.label.replace('Read', 'Reread'); g.stats.notes = (g.stats.notes || 0) + 1; break;
+      case 'chop': {
+        const fit = g.inv.add('wood', 4);
+        if (!fit) { ui.toast('Your pack is full.', 'bad'); break; }
+        this.game.scene.remove(i.obj); if (i.collider) i.collider.on = false;
+        const stump = g.assets.clone('stump'); stump.position.set(i.tx, 0, i.tz); stump.scale.setScalar(1.3); g.scene.add(stump);
+        this.toastItems({ wood: fit }); g.audio?.thud(); g.camera.shake = 0.3;
+        ui.toast('The dead pine creaks and falls into the snow.', 'info');
+        g.stats.chopped = (g.stats.chopped || 0) + 1; g.stats.woodGathered += fit;
+        this.markUsed(i);
+        break;
+      }
       case 'well': {
         if ((i.lastDay ?? -1) === g.daynight.day) { ui.toast('The hole has skinned over again. Come back tomorrow.', 'info'); break; }
         if (!g.inv.add('water', 2)) { ui.toast('Your pack is full.', 'bad'); break; }
@@ -146,7 +163,12 @@ export class Interactions {
   }
 
   usedIds() { return this.list.filter((i) => i.used && typeof i.id === 'number').map((i) => i.id); }
-  restoreUsed(ids) { for (const i of this.list) if (ids.includes(i.id)) this.markUsed(i); }
+  restoreUsed(ids) {
+    for (const i of this.list) if (ids.includes(i.id)) {
+      if (i.kind === 'chop') { this.game.scene.remove(i.obj); if (i.collider) i.collider.on = false; const st = this.game.assets.clone('stump'); st.position.set(i.tx, 0, i.tz); st.scale.setScalar(1.3); this.game.scene.add(st); }
+      this.markUsed(i);
+    }
+  }
 }
 
 function starTexture() {

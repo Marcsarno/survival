@@ -191,6 +191,14 @@ try {
     record('gather-wood', woodAfter - woodBefore >= 4, { woodBefore, woodAfter, prompt: s.prompt });
     record('take-axe', s2.tools.axe === true, { tools: s2.tools });
     await shot('03-woodshed', true);
+    // chop a dead pine near the trail (needs the axe)
+    await walkTo(-92, 5, { tol: 1.2 });
+    const w0 = (await state()).inv.wood || 0;
+    const rc = await walkTo(-86.7, 0.5, { tol: 0.8 });
+    await holdE(3700);
+    const sc = await state();
+    record('chop-dead-pine', rc.ok && (sc.inv.wood || 0) >= w0 + 4, { woodBefore: w0, woodAfter: sc.inv.wood, prompt: sc.prompt });
+    await shot('03b-chopped', true);
     await route('woodshed-to-shelter', [[-92, 6], [-80, 12], [-70, 13], [-60, 12]]);
   }
 

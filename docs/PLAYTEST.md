@@ -63,7 +63,7 @@ The anchor list is in `DESIGN.md`. Screenshots are in `docs/screenshots/`.
 
 ## Performance notes
 
-- **Desktop** (this machine, Chromium with the GPU): 60 fps capped, about 600–800 draw calls and about 500k triangles including the shadow pass. Frame-time spikes of about 110 ms showed up during automated runs; they coincide with Playwright screenshot capture, but the cause isn't confirmed.
+- **Desktop** (this machine, Chromium with the GPU): 60 fps capped, about 600–800 draw calls and about 500k triangles including the shadow pass. Frame-time spikes of about 110 ms show up during automated runs. A separate 40 s walk with no screenshots had one 77 ms frame at startup (shader warm-up) and no others, so the spikes come from screenshot capture, not from the game.
 - **Download:** 3.8 MB of meshopt-compressed models plus 218 KB of gzipped JavaScript.
 - **Phones:** not measured on a real device. Phones get `quality=low` automatically: 1.25× pixel ratio, 1024 px shadows, half the snow particles, no antialiasing.
 - **Phone approximation** (`tools/perf-mobile-sim.mjs`): a 390×844 touch viewport at 3× device scale, with the CPU throttled 4× through Chrome DevTools, on this PC's GPU. This approximates a mid-range phone's CPU, not its GPU.

@@ -27,7 +27,7 @@ Last updated 2026-09-30, after the overnight build.
 
 - **Phones untested on real hardware.** Only a simulated touch viewport was checked. Performance and controls still need a real iPhone and Android test.
 - **Animals don't pathfind.** They wander and flee in straight lines. The frozen do pathfind, but only within about 34 m of the player.
-- **Occasional frame-time spikes** (about 110 ms) during automated runs; the cause isn't isolated.
+- **One startup hitch.** Expect a single hitch of about 80 ms in the first second while shaders compile. The 110 ms spikes in automated runs come from screenshot capture.
 - **No interiors.** Houses and the pharmacy are searched at the door. The far canal bank can't be reached.
 - **No end or win state.** It's a sandbox loop.
 - **Lantern shadows are off by default** for performance. Enable them with `?shadows=high`.
@@ -44,7 +44,7 @@ Last updated 2026-09-30, after the overnight build.
 1. Play it on a phone and tune `quality=low`: shadows, pixel ratio, draw distance.
 2. Deploy `dist/` to Vercel under the **marc731@gmail.com** account (the CLI is logged in) to get a link to text.
 3. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
-4. More set dressing to match the concept density: potted plants, arched entries, pools, bikes.
+4. More set dressing to match the concept density: arched entries, awnings, more yard props.
 
 ## How to continue
 

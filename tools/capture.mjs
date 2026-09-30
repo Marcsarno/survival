@@ -11,6 +11,7 @@ import { chromium } from 'playwright';
 import { spawn, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fixWebmDuration } from './webm-duration.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
@@ -95,16 +96,16 @@ async function shot(page, name, note, view) {
   log('shot', name);
 }
 
-async function clip(page, name, note, view, body) {
-  await page.evaluate(() => {
+async function clip(page, name, note, view, body, bitrate = 3_000_000) {
+  await page.evaluate((bitrate) => {
     const c = document.getElementById('game');
     const stream = c.captureStream(30);
     const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-    const r = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 3_000_000 });
+    const r = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: bitrate });
     window.__rec = { r, chunks: [] };
     r.ondataavailable = (e) => { if (e.data.size) window.__rec.chunks.push(e.data); };
     r.start(250);
-  });
+  }, bitrate);
   const t0 = Date.now();
   const fps0 = await page.evaluate(() => window.__game.perf.fps);
   await body();
@@ -117,6 +118,7 @@ async function clip(page, name, note, view, body) {
     return btoa(s);
   });
   fs.writeFileSync(path.join(OUT, `${name}.webm`), Buffer.from(b64, 'base64'));
+  fixWebmDuration(path.join(OUT, `${name}.webm`), dur); // MediaRecorder leaves the duration out; players need it to seek
   const fps1 = await page.evaluate(() => window.__game.perf.fps);
   meta.items.push({ type: 'video', name, file: `media/${SET}/${name}.webm`, view, note, seconds: +dur.toFixed(1), fps: [fps0, fps1] });
   log('clip', name, dur.toFixed(1) + 's');
@@ -192,7 +194,7 @@ try {
             await walkTo(o.page, x, z, { tol: 1.6 });
             if (act === 'interact') { await o.page.keyboard.down('e'); await sleep(900); await o.page.keyboard.up('e'); await sleep(600); }
           }
-        });
+        }, 1_000_000); // long clips at a lower bitrate to keep the repo small
       }
       await shot(o.page, 'phone-arrival', 'After walking the whole route: the arrival state.', 'phone');
       meta.routeState = await st(o.page);

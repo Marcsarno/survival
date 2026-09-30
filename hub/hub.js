@@ -76,6 +76,7 @@ const PAGES = {
       <div class="card"><h3>Playable build</h3><ul>${o.builds.map((b) => `<li>${chip(b.status)}${b.href ? `<a href="${esc(b.href)}">${esc(b.label)}</a>` : esc(b.label)} <span class="mute">${esc(b.note)}</span></li>`).join('')}</ul></div>
       <div class="card"><h3>Controls</h3>${table(o.controls, [['action', 'Action'], ['keys', 'Keyboard'], ['touch', 'Touch']])}</div>
       <h2>Progress</h2>${table(o.progress, [['status', 'Status'], ['item', 'Item'], ['note', 'Notes']])}
+      ${o.checks ? `<h2>Latest automated checks</h2><p class="mute">From <code>npm run playtest</code> (playtest-output/results.json). Agent-driven, not a human playtest.</p>${table(o.checks.map(([name, what]) => ({ status: 'agent-tested', name, what })), [['status', 'Status'], ['name', 'Check'], ['what', 'Result']])}` : ''}
       <h2>Next steps</h2><ul>${o.next.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <h2>Not verified / open</h2><ul>${o.unverified.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <h2>How this hub works</h2><ul>${o.howto.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`;

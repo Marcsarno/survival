@@ -1,63 +1,59 @@
 # Current state
 
-Last updated 2026-09-30. Live at **https://sarno-survive.vercel.app**. The latest playtest passed 30 of 30 checks, both locally and against the live site.
+Last updated 2026-09-30. The project is now the **opening-route slice** (commit after `c98a538` on `main`). The sandbox that preceded it is at git tag `baseline-sandbox-2026-09-30`, and it is still what https://sarno-survive.vercel.app serves: the slice has not been deployed.
 
-## What works (verified by the playtest; see PLAYTEST.md)
+The visual production record is in `hub/` (open `hub/index.html` or run `npm run hub`). Keep it updated as work lands; see `hub/README.md`.
 
-- **World:** a playable browser prototype with 9 connected outdoor areas and two travel loops. It covers snowy South Florida suburbs, a playground, a canal with docks, a beach, a pharmacy lot, a service road and camp, and pine woods with a frozen pond.
-- **Resource loop:** gather or search, carry within pack limits, store in the stash, burn wood in the fire, and build 4 shelter upgrades.
-- **Survival:**
-  - Warmth, health, stamina and lantern oil.
-  - Hunger drains over a day; food refills it.
-  - Death drops your pack, and you can recover it.
-  - Sleeping or resting passes time.
-- **Combat:** the frozen hunt by sight, noise and lantern light. Aiming is forgiving and ammo is scarce; axe and shove work at close range.
-- **Wildlife:** deer, foxes, rabbits, ducks, an owl, and wolves at night. A stray dog can be befriended.
+## What works (agent-tested; see PLAYTEST.md)
+
+- **Route:** shelter → dead-end street with four houses → backyard gate (E to open) → woods (pond, woodshed) → deeper snowy trail → the house. About 350 m. An agent walking straight took about 2 min 20 s.
+- **Camera:** fixed isometric angle looking north, tracking with a look-ahead. Distance is authored per section (wider on the street and at the house, tighter in the woods). No rotation, zoom keys or cinematic mode.
+- **Movement:**
+  - Acceleration and deceleration, turn weight, and speed by ground (pavement 3.2, trail 2.95, snow 2.6, deep trail 2.3, deep off-trail 1.95 m/s). Jog is ×1.42 (×1.25 in deep snow).
+  - Collisions slide.
+  - The route corridor is a safety net that sits behind visible boundaries.
+- **Animation (stand-in):** Idle, Walk and Run blend by speed. Walk and Run are phase-locked at the stride measured from the foot bones. The model now faces its direction of travel: the baseline walked backwards.
+- **Footprints:**
+  - Placed at the foot bone at each foot contact of the gait phase.
+  - Bounded pool of 700 with a 15-minute fade, so the whole walk stays visible.
+  - Deeper, darker prints in deep snow; faint prints on pavement.
 - **Atmosphere:**
-  - Day/night cycle, hand lantern, falling snow and passing squalls.
-  - Fading footprints from the player, the frozen and animals.
-  - Procedural sound.
-- **Controls:** keyboard and mouse, plus touch controls. The camera height is adjustable, it rotates in 45° steps, and there is a low cinematic mode (C).
-- **Guidance:** a goals checklist, a map that reveals areas as you visit them, and autosave.
-- **Discoveries:** frozen iguanas, flamingos, snowmen, the emergency radio, pond water, the far-bank lantern, and snow squalls.
-- **Pathfinding:** the frozen follow a flow field around walls, cars and fences.
-- **Performance:** in the phone approximation (4× CPU throttle) it holds about 60 fps. Characters take one draw call each, and anything far away is neither drawn nor animated.
-- **Pipeline:** repeatable Blender builds (`npm run assets`) produce compressed game models. Editable `.blend` files and license records are kept.
+  - Light is authored by route progress, from blue hour to dark.
+  - Snowfall and fog tighten in the deep trail.
+  - The warm fire and lantern at the shelter are the only warm light until the house windows and porch lanterns.
+- **End and restart:** an automatic arrival trigger at the porch fades to an end card with the walk time. "Walk it again", R, or Pause → Restart route resets position, gate, prints, timer and light.
+- **Phone:** floating joystick on the left, E / jog / lantern buttons on the right, and the E button lights up when something is in reach. No page scroll or zoom.
+- **Removed from this slice:** inventory and its UI, stash, shelter upgrades, hunger, warmth and health meters, goals, map, combat, the infected, the stray dog, weather squalls and saving. The code is in the baseline tag.
 
 ## Known issues / limitations
 
-- **Phones untested on real hardware.** Only a simulated touch viewport was checked. Performance and controls still need a real iPhone and Android test.
-- **Animals don't pathfind.** They wander and flee in straight lines. The frozen do pathfind, but only within about 34 m of the player.
-- **One startup hitch.** Expect a single hitch of about 80 ms in the first second while shaders compile. The 110 ms spikes in automated runs come from screenshot capture.
-- **No interiors.** Houses and the pharmacy are searched at the door. The far canal bank can't be reached.
-- **No end or win state.** It's a sandbox loop.
-- **Lantern shadows are off by default** for performance. Enable them with `?shadows=high`.
-- **An unused model:** a brown hooded survivor recolor is kept in `assets/source/survivor-built.glb` but not placed in the world.
-
-## Untested behavior
-
-- Long sessions beyond about 2 in-game days (save and load across many days, fire behavior while sleeping repeatedly).
-- Browsers other than Chromium (Safari, Firefox).
-- Rotated-camera movement over long routes (the harness uses the default camera angle).
+- **No physical phone test.** The touch checks ran in Chromium emulating a 390×844 viewport, with scripted input.
+- **Character size on phones:** Marc is about 4–5% of screen height in portrait. That trades against the narrow portrait width, which is about 10 m across at the player. Needs Marc's judgment on a real phone.
+- **Gait:** at 2.6–3.2 m/s the walk/run blend can read as a brisk power-walk. Slower walking would lengthen the route. Final animation is deferred until a final model exists.
+- **Narrow stance:** the stand-in's feet leave an almost single-file track.
+- **Trees near the camera** render as large dark canopies at the bottom of the frame at night. The see-through circle only clears the area around the player.
+- **The first glimpse** of the house's warm light appears only at the top edge of the frame near the end of the deep trail. It could be stronger.
+- **Walk time with exploration** has not been measured with a person.
+- **Clips in `hub/media`** are canvas recordings: no HUD, 43–60 fps while recording.
 
 ## Next steps (suggested)
 
-1. Play it on a phone and tune `quality=low`: shadows, pixel ratio, draw distance.
-2. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
-3. More set dressing to match the concept density: arched entries, awnings, more yard props.
-4. Optional: connect the GitHub repo to the Vercel project so each push deploys automatically. Today deploys are manual.
+1. Marc plays on a phone and judges camera distance, character size, pacing and the house reveal.
+2. Marc decides the approach's story beats (for example the distant "DAD!", or a voice from the house). None were added on purpose.
+3. Bring in a final Marc model (Tripo was mentioned), then retune the gait blend and use true contact events from the new rig (`Player.onFootfall` is the hook).
+4. Deploy the slice when Marc wants the live link to change.
 
 ## Deployment
 
 - **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. The live URL is <https://sarno-survive.vercel.app>.
 - **Linking:** `.vercel/project.json` links this folder to the project. It is gitignored, so a fresh clone needs `npx vercel link --yes --project sarno-survive --scope marcsarno` once.
-- **Redeploy:** run `npx vercel whoami` first; it should print `marc731-6361`. Then run `npm run deploy`. Vercel builds using `vercel.json` (`npm run build`, output in `dist/`). `.vercelignore` keeps the Blender and source-asset folders out of the upload; its patterns are anchored with a leading `/`, because a bare `assets/` would also drop `public/assets/`.
+- **Redeploy:** run `npx vercel whoami` first; it should print `marc731-6361`. Then run `npm run deploy`. Vercel builds with `vercel.json` (`npm run build`, output in `dist/`). `.vercelignore` keeps the Blender, source-asset and hub folders out of the upload.
 - **Verify live:** `node tools/playtest.mjs --url=https://sarno-survive.vercel.app/`
 
 ## Starting a new chat
 
-Open this folder in Claude Code and say something like: "Read CLAUDE.md and docs/STATE.md, then let's improve X." Everything needed to continue is in the repo and in this file. Before any Vercel command, confirm the account is marc731, not hornerxpress.
+Open this folder in Claude Code and say something like: "Read CLAUDE.md and docs/STATE.md, then let's improve X." Before any Vercel command, confirm the account is marc731, not hornerxpress.
 
 ## How to continue
 
-Read `README.md`, then `docs/DESIGN.md`. Run `npm run dev` while working. After any change, run `npm run playtest`, then `npm run deploy` when it passes.
+Read `README.md`, then `docs/DESIGN.md`, then the hub. Run `npm run dev` while working. After a change, run `npm run playtest` (all checks should pass), look at the screenshots, capture a new hub set with `node tools/capture.mjs --set=<name>`, and update `hub/data.js`.

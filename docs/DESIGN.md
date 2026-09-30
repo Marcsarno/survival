@@ -1,8 +1,66 @@
 # Design record
 
-This is the shared record of material decisions for the prototype. The user's vision notes and concept art live outside the repo (`Documents/Codex/2026-09-29/okay-so-there-s-a-few/outputs/`). This file records what the build chose and why. Later entries win.
+This is the shared record of material decisions for the prototype. The user's vision notes and concept art live outside the repo (`Documents/Codex/2026-09-29/okay-so-there-s-a-few/outputs/`). The current project bible is `master-story-design-brief-2026-09-30.txt` in that folder. This file records what the build chose and why. **Later entries win:** the opening-route slice section below supersedes the sandbox sections after it wherever they conflict.
 
-## Scope of this prototype (Sep 2026 overnight build)
+## Opening-route slice (2026-09-30)
+
+**Goal:** a compact, linear, playable approach to the house where Arianna is held. It should feel deliberate, vulnerable and increasingly tense: a worried father moving from fragile safety toward a dangerous house. Story first, atmosphere second, gameplay third, and graybox first.
+
+**Scope:** shelter → neighborhood edge → woods → deeper snowy trail → the house. It has one route interaction (the gate), an arrival trigger, an end card and restart. There is no inventory, crafting, combat, infected, dialogue, cinematics, interior or confrontation. Starting at the shelter is for this test only.
+
+**Not decided by this build (Marc's calls):** story beats on the approach ("DAD!", a voice from the house), why there is snow, the shelter's final form, and anything about the people in the house.
+
+### Camera
+- Fixed angle looking north. Up-screen is always the direction of travel. It never rotates and has no player zoom. A special angle is reserved for deliberate cinematic moments later.
+- **Portrait:** FOV 52°, distance 22 m, pitch 0.86 rad (≈49°) above the horizon, lead 6 m north plus up to 2.5 m toward the motion.
+- **Landscape:** FOV 36°, distance 26 m, pitch 0.86 rad.
+- **Authored distance per section** (the brief allows slight zoom): shelter ×1.0, street ×1.3, woods ×0.95, deep trail ×0.92, house ×1.12. It eases over a few seconds.
+- The portrait frame is only about 10 m wide at the player but sees about 28 m ahead, so the route is laid out tall and narrow: things of interest sit within about ±6 m of the path or ahead of it.
+- The character is about 4–5% of screen height in portrait. That is the main open trade-off.
+
+### Route layout (`src/world/route.js`)
+- A centerline of points `[x, z, w, tw]`. `w` is the walkable half-width and `tw` the packed-trail half-width. The route is monotonic in z, so `atZ(z, lateral)` places set dressing relative to the path.
+- **Boundaries** are visible things: stucco walls, backyard fences, houses, a dense tree band on banks that rise either side of the trail, rocks, drifts and the yard fence. `clampToRoute()` is a safety limit only, and sits behind those.
+- **Terrain:** the woods trail runs in a shallow valley; banks rise 2 m within about `w + 3` and another 1.8 m beyond. Flat pockets are kept for the pond, the woodshed and the house clearing. The trail is a ribbon mesh with a trampled texture, and sits about 0.12 m lower.
+- **Lengths:** 347 m of centerline. The street is 65 m; woods about 115 m; deep trail about 80 m.
+- **Light by progress:** hour 19.3 → 19.5 → 19.85 → 20.15 → 20.35 at progress 0, 0.22, 0.55, 0.82 and 1. The sun hands over to the moon between 19.1 and 19.9 with no jump.
+- **Fog** starts at the camera distance plus 3 m and extends 95 / 85 / 62 / 46 / 60 m by section. Snowfall is ×0.7 / 0.9 / 1.2 / 2.1 / 1.3.
+- **Warm light only** at the shelter (fire, lantern) and the house (windows, porch lanterns, glow sprites that ignore fog so they read at a distance). The street houses are dark.
+
+### Movement (`src/systems/player.js`)
+| | Value |
+|---|---|
+| Speed by ground (m/s) | paved 3.2 · trail 2.95 · snow 2.6 · ice 2.4 · deep trail 2.3 · deep off-trail 1.95 |
+| Jog | ×1.42 (×1.25 in deep snow): a step up, not a sprint |
+| Acceleration / deceleration | 8 / 11 m/s² |
+| Turning | ≤10 rad/s, eased; speed × (0.35 + 0.65·cos(0.9·Δ)) while facing away from the input |
+| Uphill | up to −30% on steep rises |
+| Collision | 0.34 m circle, sub-stepped at ≤0.2 m, velocity = actual displacement (no pushing momentum into walls) |
+| Gait | Idle/Walk/Run weights by speed; Walk→Run blend between 2.2 and 3.4 m/s; a shared phase; clip rates from strides measured at load (Walk 1.70 m per loop at 1.27 m/s, Run 2.29 m per loop at 2.89 m/s) |
+| Facing | The Adventurer rig faces −z; an inner pivot turns it around. The baseline skipped this, so Marc walked backwards. |
+
+### Footprints
+- One print per foot contact (phase 0 = left, 0.5 = right), placed at the foot bone and nudged 6 cm toward the toes.
+- Mirrored per foot and height-sampled at the print.
+- Pool of 700 with a 900 s fade.
+- Strength: pavement 0.3, trail 0.85, snow 1.0, deep 1.25 (18% larger).
+- `Player.onFootfall()` is the integration point for a final rig's contact events. The distance-based stepper remains as a fallback when foot bones are missing.
+
+### UI
+- A prompt, a pause/help card, the end card, and pause and sound buttons.
+- **Touch:** a floating joystick in the left 62% × lower 72% of the screen; E / jog / lantern bottom right. E lights up when something is in reach.
+- Page scroll, rubber-banding, double-tap and pinch zoom are blocked.
+
+### Production record
+- `hub/` holds the plan, references, assets, characters, motion tests and before/after.
+- Statuses are reference / planned / implemented / agent-tested / approved by Marc. Only Marc approves.
+- Captures come from `tools/capture.mjs`. Clips are MediaRecorder canvas recordings; `tools/webm-duration.mjs` adds the missing duration.
+
+---
+
+The sections below describe the sandbox build (tag `baseline-sandbox-2026-09-30`). They are kept for history and for reusing its parts.
+
+## Scope of the sandbox prototype (Sep 2026 overnight build)
 
 - Environments and playable systems only.
 - Out of scope for now, kept as future direction: cinematics, dialogue scenes, family characters, the daughter-rescue opening, and scripted missions.

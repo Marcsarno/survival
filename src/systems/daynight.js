@@ -1,0 +1,77 @@
+import * as THREE from 'three';
+import { lerp, smoothstep } from '../core/util.js';
+
+// Time of day drives sun/moon light, sky, fog and hemisphere colors.
+// One in-game day lasts DAY_SECONDS real seconds.
+export const DAY_SECONDS = 24 * 60;
+
+const KEYS = [ // hour, sky, sunColor, sunIntensity, hemiSky, hemiGround, hemiIntensity, fogColor, exposure
+  [0, '#0d1424', '#8fa6d8', 0.55, '#2a3a5e', '#1a2030', 0.55, '#141c2e', 1.0],
+  [5, '#1a2338', '#9aa8d0', 0.5, '#34426a', '#1d2436', 0.6, '#1d2638', 1.0],
+  [6.5, '#b99aa2', '#ffc49a', 1.5, '#9fa9cc', '#6a6070', 0.8, '#b8a8b4', 1.0],
+  [8, '#bcd0e8', '#ffe2c4', 2.6, '#c6d6ee', '#8a8a96', 1.0, '#c8d6e6', 1.0],
+  [12, '#c4d8ee', '#fff4e6', 3.0, '#d2def0', '#8f93a0', 1.05, '#d0dcea', 1.0],
+  [16, '#c9cfe0', '#ffe0b8', 2.6, '#c8d0e6', '#8a8490', 0.95, '#cdd2e2', 1.0],
+  [18, '#d69a7c', '#ffac6e', 1.7, '#a898b8', '#6a5a60', 0.8, '#c49a8e', 1.0],
+  [19.3, '#4a4a70', '#b08aa8', 0.7, '#4a5080', '#2a2838', 0.6, '#3e4266', 1.0],
+  [20.5, '#141c30', '#8fa6d8', 0.55, '#2a3a5e', '#1a2030', 0.55, '#172034', 1.0],
+  [24, '#0d1424', '#8fa6d8', 0.55, '#2a3a5e', '#1a2030', 0.55, '#141c2e', 1.0],
+];
+const cols = KEYS.map((k) => k.map((v) => (typeof v === 'string' ? new THREE.Color(v) : v)));
+
+export class DayNight {
+  constructor(scene, renderer, quality) {
+    this.scene = scene; this.renderer = renderer;
+    this.hour = 8; this.day = 1;
+    this.sun = new THREE.DirectionalLight('#fff', 2.5);
+    this.sun.castShadow = true;
+    const size = quality.low ? 1024 : 2048;
+    this.sun.shadow.mapSize.set(size, size);
+    const s = this.sun.shadow.camera; s.left = -42; s.right = 42; s.top = 42; s.bottom = -42; s.near = 1; s.far = 160;
+    this.sun.shadow.bias = -0.0006; this.sun.shadow.normalBias = 0.04;
+    scene.add(this.sun, this.sun.target);
+    this.hemi = new THREE.HemisphereLight('#cfdcf0', '#8a8a96', 1.0);
+    scene.add(this.hemi);
+    scene.fog = new THREE.Fog('#cdd8e6', 60, 190);
+    scene.background = new THREE.Color('#c4d8ee');
+    this.nightness = 0;
+  }
+
+  /** 0 = full day, 1 = full night */
+  get isNight() { return this.nightness > 0.5; }
+  timeString() { const h = Math.floor(this.hour), m = Math.floor((this.hour % 1) * 60); return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`; }
+
+  update(dt, focus) {
+    this.hour += (dt / DAY_SECONDS) * 24;
+    if (this.hour >= 24) { this.hour -= 24; this.day++; }
+    this.apply(focus);
+  }
+
+  apply(focus) {
+    const h = this.hour;
+    let i = 0; while (i < cols.length - 2 && cols[i + 1][0] <= h) i++;
+    const a = cols[i], b = cols[i + 1];
+    const t = (h - a[0]) / (b[0] - a[0]);
+    const mix = (k) => a[k].clone().lerp(b[k], t);
+    this.scene.background.copy(mix(1));
+    this.sun.color.copy(mix(2)); this.sun.intensity = lerp(a[3], b[3], t);
+    this.hemi.color.copy(mix(4)); this.hemi.groundColor.copy(mix(5)); this.hemi.intensity = lerp(a[6], b[6], t);
+    this.scene.fog.color.copy(mix(7));
+    // night factor for gameplay and lights
+    this.nightness = h < 6 ? 1 - smoothstep(5, 6.8, h) : smoothstep(18.2, 20.2, h);
+    this.scene.fog.near = lerp(60, 26, this.nightness); this.scene.fog.far = lerp(190, 95, this.nightness);
+    // sun by day, moon by night: both come from the south-east-ish so shadows read well from the camera
+    const day = h >= 6 && h <= 19.5;
+    const ang = day ? ((h - 6) / 13.5) * Math.PI : 0.9;
+    const dir = new THREE.Vector3(Math.cos(ang) * 0.9 + 0.2, Math.max(0.35, Math.sin(ang)) * 1.1, 0.55).normalize();
+    if (!day) dir.set(-0.45, 1.0, 0.6).normalize();
+    this.sun.position.copy(focus).addScaledVector(dir, 80);
+    this.sun.target.position.copy(focus);
+  }
+
+  /** jump forward to the next morning (07:00) or evening (20:30) */
+  skip() {
+    if (this.isNight || this.hour < 7) { if (this.hour > 12) this.day++; this.hour = 7.5; }
+    else this.hour = 20.8;
+  }
+}

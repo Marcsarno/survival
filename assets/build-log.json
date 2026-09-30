@@ -1,0 +1,27 @@
+[
+ {
+  "name": "fir-1",
+  "tris": 116,
+  "bytes": 11056
+ },
+ {
+  "name": "fir-2",
+  "tris": 116,
+  "bytes": 11056
+ },
+ {
+  "name": "palm-1",
+  "tris": 512,
+  "bytes": 33924
+ },
+ {
+  "name": "palm-2",
+  "tris": 484,
+  "bytes": 32504
+ },
+ {
+  "name": "palm-3",
+  "tris": 512,
+  "bytes": 34156
+ }
+]

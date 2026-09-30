@@ -129,7 +129,7 @@ export function house(b, col, P, o) {
     box(b, P, snow, w / 2 + 0.45, 0.88, -d * 0.2, 0.84, 0.08, 0.84);
   }
   colBox(col, P, 0, 0, w / 2 + 0.05, d / 2 + 0.05, 0, 'house');
-  return { door: worldPos(P, doorX, 0, d / 2 + 1.3), garage: garage ? worldPos(P, -w / 2 + 1.9, 0, d / 2 + 1.5) : null };
+  return { door: worldPos(P, doorX, 0, d / 2 + 1.3), doorX, garage: garage ? worldPos(P, -w / 2 + 1.9, 0, d / 2 + 1.5) : null };
 }
 
 // ------------------------------------------------------------------ small props
@@ -194,6 +194,7 @@ export function boardSign(b, col, P, text, sub, color = '#e8e2d0') {
   const mat = stdMat('#ffffff', { map: signTexture(text, sub, color, '#3a2e24') });
   box(b, P, stdMat(PAL.wood), 0, 1.6, 0, 2.3, 1.1, 0.08);
   b.add(new THREE.PlaneGeometry(2.1, 1.0), mat, P.clone().multiply(mtx(0, 1.6, 0.05)));
+  b.add(new THREE.PlaneGeometry(2.1, 1.0), mat, P.clone().multiply(mtx(0, 1.6, -0.05, Math.PI)));
   box(b, P, SNOW(), 0, 2.19, 0, 2.35, 0.08, 0.16);
   colBox(col, P, 0, 0, 1.2, 0.15);
 }
@@ -459,4 +460,37 @@ export function tent(b, col, P, color = '#6a7a5a') {
   box(b, P, m, 0.62, 0.72, 0, 0.05, 1.7, 2.4, 0, 0, 0.72);
   box(b, P, SNOW(), 0, 1.42, 0, 0.35, 0.1, 2.3);
   colBox(col, P, 0, 0, 1.2, 1.3);
+}
+
+// ------------------------------------------------------------------ set dressing
+export function pottedPlant(b, inst, col, P, plant = 'croton', s = 0.55) {
+  const pot = stdMat('#b0613d');
+  b.add(new THREE.CylinderGeometry(0.26, 0.19, 0.42, 8), pot, P.clone().multiply(mtx(0, 0.21, 0)));
+  b.add(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 8), stdMat('#c07049'), P.clone().multiply(mtx(0, 0.42, 0)));
+  const v = worldPos(P, 0, 0.4, 0);
+  inst.add(plant, mtx(v.x, 0.4, v.z, Math.random() * 6, s, s, s));
+  col.circle(v.x, v.z, 0.3).low = true;
+}
+export function bicycle(b, col, P, color = '#8a2f2a') {
+  const frame = stdMat(color, { roughness: 0.5, metalness: 0.3 }), tire = stdMat('#1c1c1e');
+  const wheel = new THREE.TorusGeometry(0.33, 0.035, 6, 14);
+  for (const x of [-0.52, 0.52]) b.add(wheel, tire, P.clone().multiply(mtx(x, 0.35, 0)));
+  const bar = (x0, y0, x1, y1) => { const L = Math.hypot(x1 - x0, y1 - y0); box(b, P, frame, (x0 + x1) / 2, (y0 + y1) / 2, 0, L, 0.035, 0.035, 0, 0, Math.atan2(y1 - y0, x1 - x0)); };
+  bar(-0.52, 0.35, 0, 0.35); bar(0, 0.35, 0.38, 0.78); bar(-0.2, 0.8, 0.38, 0.78); bar(-0.52, 0.35, -0.2, 0.8); bar(0, 0.35, -0.2, 0.8); bar(0.38, 0.78, 0.52, 0.35);
+  box(b, P, tire, -0.2, 0.86, 0, 0.22, 0.05, 0.1); box(b, P, frame, 0.42, 0.95, 0, 0.05, 0.05, 0.5);
+  box(b, P, SNOW(), -0.2, 0.9, 0, 0.18, 0.03, 0.08);
+  colBox(col, P, 0, 0, 0.8, 0.2).low = true;
+}
+export function frozenPool(b, col, P, w = 6, d = 3.4) {
+  const coping = stdMat('#d9d3c7');
+  box(b, P, coping, 0, 0.08, -d / 2 - 0.2, w + 0.8, 0.16, 0.4); box(b, P, coping, 0, 0.08, d / 2 + 0.2, w + 0.8, 0.16, 0.4);
+  box(b, P, coping, -w / 2 - 0.2, 0.08, 0, 0.4, 0.16, d); box(b, P, coping, w / 2 + 0.2, 0.08, 0, 0.4, 0.16, d);
+  box(b, P, stdMat('#9fc6d6', { roughness: 0.25 }), 0, 0.09, 0, w, 0.04, d, 0, 0, 0, { cast: false });
+  for (let i = 0; i < 5; i++) box(b, P, SNOW(), -w / 2 + 0.8 + i * 1.1, 0.12, (i % 2 ? 0.6 : -0.8), 0.9 + (i % 3) * 0.3, 0.03, 0.7, i * 0.7, 0, 0, { cast: false });
+  for (const s of [-0.25, 0.25]) box(b, P, stdMat('#9a9ea3', { metalness: 0.6, roughness: 0.4 }), w / 2 - 0.5 + s, 0.45, -d / 2 - 0.15, 0.04, 0.8, 0.04);
+  colBox(col, P, 0, 0, w / 2 + 0.2, d / 2 + 0.2).low = true; // walkable ice would be fun, but keep players out
+}
+export function stormDrain(b, P) {
+  box(b, P, stdMat('#2a2b2e'), 0, 0.045, 0, 0.9, 0.02, 0.45, 0, 0, 0, { cast: false });
+  for (let i = -3; i <= 3; i++) box(b, P, stdMat('#4a4c50'), i * 0.12, 0.055, 0, 0.04, 0.02, 0.42, 0, 0, 0, { cast: false });
 }

@@ -121,7 +121,7 @@ export function buildWorld(scene, assets, col) {
     for (const [x, z] of [[-74, -2], [-48, -2], [-74, 26], [-47, 27], [-68, 26], [-70, 2]]) { place(pick(rng, ['palm-1', 'palm-2', 'palm-3']), x, z, undefined, 1, 0.35); block(x, z, 2); }
     for (const [x, z] of [[-70, 20], [-52, 3], [-50, 16], [-72, 12.5]]) place(pick(rng, ['shrub-1', 'shrub-2', 'agave', 'croton']), x, z, undefined, 1, 0.5);
     lights.push({ x: fp.x, y: 1.2, z: fp.z, color: PAL.fireLight, intensity: 30, distance: 16, kind: 'fire' });
-    lights.push({ x: SHELTER.x + 3.2, y: 2.6, z: SHELTER.z - 2.4, color: PAL.lanternLight, intensity: 10, distance: 9, kind: 'shelterLamp' });
+    lights.push({ x: SHELTER.x + 3.2, y: 2.6, z: SHELTER.z - 2.4, color: PAL.lanternLight, intensity: 18, distance: 13, kind: 'shelterLamp' });
     const lamp = assets.clone('lantern'); lamp.position.set(SHELTER.x + 3.2, 3.0, SHELTER.z - 2.4); scene.add(lamp);
     // upgrade visuals (hidden until built)
     dynamic.upgrades = buildUpgradeVisuals(scene, assets);
@@ -176,6 +176,9 @@ export function buildWorld(scene, assets, col) {
     if (rng() < 0.6) place(pick(rng, ['palm-2', 'palm-3']), x + w / 2 + 1.5, side * 9.2, undefined, 1, 0.35);
     for (let k = 0; k < 3; k++) place(pick(rng, ['croton', 'agave', 'shrub-1', 'palmetto']), x - w / 2 + 2 + rng() * (w - 4), z - side * (d / 2 + 0.9), undefined, 0.8 + rng() * 0.4, 0);
     if (rng() < 0.5) B.trashBin(b, col, mtx(doorX - 2.2, 0, side * 6.8), rng() < 0.3);
+    // potted plants by the door, and sometimes a bike left against the side of the house
+    for (const s of [-1, 1]) if (rng() < 0.75) B.pottedPlant(b, inst, col, P.clone().multiply(mtx(res.doorX + s * 1.25, 0, d / 2 + 0.5)), pick(rng, ['croton', 'agave', 'palmetto']), 0.45 + rng() * 0.2);
+    if (rng() < 0.3) B.bicycle(b, col, P.clone().multiply(mtx(w / 2 + 0.55, 0, d / 2 - 1.5, Math.PI / 2 + 0.15, 1, 1, 1, 0, 0.12)), pick(rng, ['#8a2f2a', '#2f5f8a', '#3f7a4a', '#c9a13a']));
     // side & back yard fences (privacy) between lots
     const bz0 = z + side * (d / 2 - 1), bz1 = z + side * (d / 2 + 5.5);
     B.woodFence(b, col, x - w / 2 - 2.8, bz0, x - w / 2 - 2.8, bz1);
@@ -188,6 +191,7 @@ export function buildWorld(scene, assets, col) {
   const poleTops = [];
   for (let x = -40; x <= 106; x += 18) poleTops.push(B.utilityPole(b, col, mtx(x, 0, -6.9, 0)));
   wires(scene, poleTops);
+  for (let x = -38; x < 108; x += 24 + rng() * 6) for (const s of [-1, 1]) if (Math.abs(x - 18) > 6) B.stormDrain(b, mtx(x, 0, s * 3.75));
   B.streetSign(b, col, mtx(22.6, 0, -5.4), 'HIBISCUS LN');
   B.streetSign(b, col, mtx(13.4, 0, 5.4, Math.PI / 2), 'CORAL PALM DR');
   // abandoned cars on the street
@@ -311,6 +315,7 @@ export function buildWorld(scene, assets, col) {
       surface(scene, 'paver', x, 49.5, w - 1, 4.4, 0, 0.046, 3.4);
       B.patioSet(b, col, mtx(x - 1.5, 0, 49.5, 0.1));
       if (i % 2 === 0) B.dock(b, col, mtx(x + 2, 0, 59.4, 0), 5, 2.4);
+      else B.frozenPool(b, col, mtx(x + 3.6, 0, 50.8), 4.2, 2.3);
       addI({ kind: 'search', x: x + 1.0, z: 48.5, r: 1.8, hold: 1.6, label: 'Search patio deck box', loot: [{ oil: 1 }, { blanket: 1 }, { food: 1, water: 1 }, { wood: 2 }, { ammo: 2 }, { tarp: 1 }][i] });
       // divider fences toward the promenade
       B.woodFence(b, col, x + w / 2 + 1.6, 45.5, x + w / 2 + 1.6, 52.5);
@@ -326,7 +331,7 @@ export function buildWorld(scene, assets, col) {
     }
     for (const [x, z] of [[30, 64], [42, 70], [60, 66], [10, 68], [-10, 71]]) animalSpawns.push({ kind: 'duck', x, z, water: [[-38, 61], [102, 75]] });
     zombieSpawns.push({ x: 60, z: 55, area: 'canal' });
-    B.boardSign(b, col, mtx(22, 0, 53.2, Math.PI), 'CANAL WALK', 'No swimming · No wake');
+    B.boardSign(b, col, mtx(22, 0, 53.2, 0), 'CANAL WALK', 'No swimming · No wake');
   }
 
   // -------------------------------------------------------------- Beach

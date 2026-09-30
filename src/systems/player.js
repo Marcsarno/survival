@@ -24,7 +24,7 @@ export class Player {
     if (game.quality.lanternShadows) { this.lanternLight.castShadow = true; this.lanternLight.shadow.camera.far = 14; this.lanternLight.shadow.mapSize.set(512, 512); this.lanternLight.shadow.bias = -0.004; this.lanternLight.shadow.camera.near = 0.2; }
     this.lantern.add(this.lanternLight);
     // soft fill so the character reads at night (not a world light: tiny radius, no shadows)
-    this.fill = new THREE.PointLight('#b8c8ff', 0, 4.5, 2); this.fill.position.set(0.6, 2.2, 1.2); this.obj.add(this.fill);
+    this.fill = new THREE.PointLight('#b8c8ff', 0, 6, 1.6); game.scene.add(this.fill);
     this.attach(this.lantern, this.handL, [0, -0.05, 0.03]);
     this.pistol = game.assets.clone('pistol'); this.attach(this.pistol, this.handR, [0.02, -0.05, 0.08], [0, 0, -Math.PI / 2]);
     this.axe = game.assets.clone('axe'); this.attach(this.axe, this.handR, [0.0, -0.06, 0.05], [Math.PI / 2, 0, 0]);
@@ -131,7 +131,9 @@ export class Player {
       if (st.oil <= 0) { this.lanternOn = false; g.ui.toast('The lantern sputters out. Find lamp oil.', 'bad'); }
     }
     this.lantern.visible = this.lanternOn || g.daynight.nightness > 0.2;
-    this.fill.intensity = 2.2 * g.daynight.nightness;
+    this.fill.intensity = 4.5 * g.daynight.nightness;
+    // keep the fill on the camera side of the player so the visible side is lit
+    this.fill.position.set(this.pos.x + Math.sin(cam.yaw) * 1.6, this.pos.y + 2.3, this.pos.z + Math.cos(cam.yaw) * 1.6);
     const flick = 1 + Math.sin(performance.now() * 0.013) * 0.05 + Math.sin(performance.now() * 0.031) * 0.04;
     this.lanternLight.intensity = this.lanternOn ? (6 + 14 * g.daynight.nightness) * flick : 0;
     this.lantern.traverse((o) => { if (o.isMesh && o.material.name === 'LanternGlow') o.material.emissiveIntensity = this.lanternOn ? 3 : 0.05; });

@@ -1,10 +1,9 @@
-// Keyboard, mouse and touch input merged into one action state.
+// Keyboard and touch input merged into one action state.
 export class Input {
   constructor(canvas) {
     this.keys = new Set();
     this.pressed = new Set();   // keys pressed this frame
-    this.mouse = { x: 0, y: 0, left: false, right: false, leftPressed: false, rightReleased: false, wheel: 0 };
-    this.touch = { active: false, joyX: 0, joyY: 0, buttons: new Set(), pressedButtons: new Set(), releasedButtons: new Set() };
+    this.touch = { active: false, joyX: 0, joyY: 0, jogToggle: false, buttons: new Set(), pressedButtons: new Set(), releasedButtons: new Set() };
     this.isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
     this.canvas = canvas;
 
@@ -15,32 +14,22 @@ export class Input {
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'tab'].includes(k)) e.preventDefault();
     });
     addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
-    addEventListener('blur', () => { this.keys.clear(); this.mouse.left = this.mouse.right = false; });
-    canvas.addEventListener('mousemove', (e) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; this.mouseMoved = true; });
-    canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) { this.mouse.left = true; this.mouse.leftPressed = true; }
-      if (e.button === 2) this.mouse.right = true;
-    });
-    addEventListener('mouseup', (e) => {
-      if (e.button === 0) this.mouse.left = false;
-      if (e.button === 2) { this.mouse.right = false; this.mouse.rightReleased = true; }
-    });
+    addEventListener('blur', () => this.keys.clear());
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    canvas.addEventListener('wheel', (e) => { this.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });
+    // no page scrolling, rubber-banding, double-tap or pinch zoom while playing (help text can still scroll)
+    document.addEventListener('touchmove', (e) => { if (!e.target.closest?.('.scrollable')) e.preventDefault(); }, { passive: false });
+    for (const ev of ['gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault());
     if (this.isTouch) this.setupTouch();
   }
 
   setupTouch() {
     document.body.classList.add('touch');
     document.getElementById('touch').classList.remove('hidden');
-    const joy = document.getElementById('joy'), knob = document.getElementById('joy-knob');
+    // floating joystick: a thumb down anywhere in the left zone centers the stick there
+    const zone = document.getElementById('joy-zone'), joy = document.getElementById('joy'), knob = document.getElementById('joy-knob');
     let joyId = null, cx = 0, cy = 0;
     const R = 52;
-    joy.addEventListener('pointerdown', (e) => {
-      joyId = e.pointerId; try { joy.setPointerCapture(e.pointerId); } catch {}
-      const r = joy.getBoundingClientRect(); cx = r.left + r.width / 2; cy = r.top + r.height / 2;
-      move(e);
-    });
     const move = (e) => {
       if (e.pointerId !== joyId) return;
       let dx = e.clientX - cx, dy = e.clientY - cy;
@@ -50,19 +39,27 @@ export class Input {
     };
     const end = (e) => {
       if (e.pointerId !== joyId) return;
-      joyId = null; knob.style.transform = ''; this.touch.joyX = this.touch.joyY = 0;
+      joyId = null; knob.style.transform = ''; joy.classList.remove('active'); this.touch.joyX = this.touch.joyY = 0;
     };
-    joy.addEventListener('pointermove', move);
-    joy.addEventListener('pointerup', end); joy.addEventListener('pointercancel', end);
+    zone.addEventListener('pointerdown', (e) => {
+      if (joyId !== null) return;
+      e.preventDefault();
+      joyId = e.pointerId; try { zone.setPointerCapture(e.pointerId); } catch {}
+      cx = e.clientX; cy = e.clientY;
+      joy.style.left = `${cx}px`; joy.style.top = `${cy}px`; joy.classList.add('active');
+      move(e);
+    });
+    zone.addEventListener('pointermove', move);
+    zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
     for (const b of document.querySelectorAll('#touch .tb')) {
       const act = b.dataset.act;
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch {}
-        if (act === 'sprint') { this.touch.sprintToggle = !this.touch.sprintToggle; b.classList.toggle('active', this.touch.sprintToggle); return; }
+        if (act === 'jog') { this.touch.jogToggle = !this.touch.jogToggle; b.classList.toggle('active', this.touch.jogToggle); return; }
         this.touch.buttons.add(act); this.touch.pressedButtons.add(act); b.classList.add('active');
       });
       const up = () => {
-        if (act === 'sprint') return;
+        if (act === 'jog') return;
         if (this.touch.buttons.has(act)) this.touch.releasedButtons.add(act);
         this.touch.buttons.delete(act); b.classList.remove('active');
       };
@@ -91,7 +88,6 @@ export class Input {
 
   endFrame() {
     this.pressed.clear();
-    this.mouse.leftPressed = false; this.mouse.rightReleased = false; this.mouse.wheel = 0;
     this.touch.pressedButtons.clear(); this.touch.releasedButtons.clear();
   }
 }

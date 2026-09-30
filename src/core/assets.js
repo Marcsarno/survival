@@ -5,12 +5,11 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 
 // Loads every GLB once. Static models are later instanced; rigged ones are cloned with SkeletonUtils.
 export const MODEL_LIST = [
-  'pine-1', 'pine-2', 'pine-3', 'fir-1', 'fir-2', 'palm-1', 'palm-2', 'palm-3',
-  'shrub-1', 'shrub-2', 'shrub-3', 'agave', 'croton', 'palmetto', 'hedge',
+  'pine-1', 'pine-2', 'pine-3', 'fir-1', 'fir-2', 'palm-1', 'palm-2', 'palm-3', 'snag',
+  'shrub-1', 'shrub-2', 'shrub-3', 'agave', 'croton', 'palmetto',
   'rock-1', 'rock-2', 'rock-3', 'snow-mound-1', 'snow-mound-2', 'lantern', 'car-sedan', 'car-suv',
-  'stump', 'fallen-log', 'wood-bundle', 'campfire', 'axe', 'pistol', 'medkit', 'food-can', 'matchbox',
-  'water-bottle', 'backpack', 'rabbit', 'duck', 'owl', 'iguana', 'flamingo', 'snowman', 'radio', 'snag',
-  'player', 'zombie-a', 'zombie-b', 'deer', 'fox', 'wolf', 'dog',
+  'stump', 'fallen-log', 'campfire', 'snowman', 'flamingo', 'rabbit',
+  'player', 'deer', 'fox',
 ];
 
 export class Assets {

@@ -2,51 +2,51 @@ import * as THREE from 'three';
 import { Assets } from './core/assets.js';
 import { Input } from './core/input.js';
 import { Collision } from './core/collision.js';
-import { buildWorld, areaAt, SHELTER, START } from './world/world.js';
-import { surfaceKindAt } from './world/ground.js';
+import { buildRoute, nearest, clampToRoute, groundKind, sectionAt, START, SHELTER_FIRE, ROUTE_LENGTH, ROUTE_TEST } from './world/route.js';
 import { DayNight } from './systems/daynight.js';
 import { Snowfall } from './systems/snowfall.js';
 import { Footprints } from './systems/footprints.js';
 import { FollowCamera } from './systems/camera.js';
 import { Player } from './systems/player.js';
-import { Zombies, Combat } from './systems/zombies.js';
 import { Wildlife } from './systems/wildlife.js';
-import { Shelter } from './systems/shelter.js';
 import { Interactions } from './systems/interact.js';
-import { Inventory, USE_KEYS, ITEMS } from './systems/inventory.js';
 import { Audio } from './systems/audio.js';
 import { UI } from './ui/hud.js';
-import { PAL } from './palette.js';
 import { makeSeeThrough, updateSeeThrough } from './core/seethrough.js';
-import { Goals } from './systems/goals.js';
+import { lerp, smoothstep } from './core/util.js';
+import { groundHeight } from './world/ground.js';
 
+// Opening-route slice: shelter → neighborhood edge → woods → deeper snowy trail → the house.
+// No inventory, combat or survival meters. The light is authored by how far along the route you are.
 const params = new URLSearchParams(location.search);
-const SAVE_KEY = 'sarno-survive-save-v1';
-const TELEPORTS = {
-  f1: ['Pavilion Park', -60, 16], f2: ['Coral Palm Drive', 40, 1], f3: ['Sunflower Tot Lot', 39, -14], f4: ['Pelican Pharmacy', 18, -76],
-  f5: ['Canal Walk', 30, 56], f6: ['Beach', 122, 0], f7: ['Frozen Pond', -104, -36], f8: ['Abandoned Camp', -40, -76], f9: ['Woodshed', -100, 4],
+
+// hour of the day by route progress (0..1): blue hour at the shelter, full dark by the house
+const LIGHT_KEYS = [[0, 19.3], [0.22, 19.5], [0.55, 19.85], [0.82, 20.15], [1, 20.35]];
+const ATMOS = { // per section: snowfall, fog distance beyond the camera, camera distance (zoom 1 = default)
+  shelter: { snow: 0.7, fog: 95, zoom: 1.0 }, street: { snow: 0.9, fog: 85, zoom: 1.3 }, woods: { snow: 1.2, fog: 62, zoom: 0.95 },
+  deep: { snow: 2.1, fog: 46, zoom: 0.92 }, house: { snow: 1.3, fog: 60, zoom: 1.12 },
 };
 
 class Game {
   constructor() {
     this.canvas = document.getElementById('game');
     const touch = matchMedia('(pointer: coarse)').matches;
-    this.quality = { low: params.get('quality') === 'low' || (touch && params.get('quality') !== 'high'), lanternShadows: params.get('shadows') === 'high' };
+    this.quality = { low: params.get('quality') === 'low' || (touch && params.get('quality') !== 'high') };
     this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: !this.quality.low, powerPreference: 'high-performance', preserveDrawingBuffer: params.has('capture') });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.quality.low ? 1.25 : 1.75));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, this.quality.low ? 1.5 : 1.75));
     this.renderer.setSize(innerWidth, innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.0;
     this.scene = new THREE.Scene();
     this.assets = new Assets();
     this.input = new Input(this.canvas);
     this.col = new Collision();
     this.camera = new FollowCamera(innerWidth / innerHeight);
     this.log = []; this.noise = 0; this.paused = true; this.started = false;
-    this.stats = { kills: 0, shots: 0, searched: 0, woodGathered: 0, woodBurned: 0, built: 0, deaths: 0, dog: false, areas: new Set() };
+    this.run = { t: 0, moving: false, arrived: false, gateOpenedAt: null };
     this.perf = { frames: 0, t0: performance.now(), fps: 0, worst: 0, loadMs: 0 };
+    this.route = ROUTE_TEST;
     addEventListener('resize', () => this.resize());
   }
 
@@ -54,46 +54,36 @@ class Game {
     const t0 = performance.now();
     const fill = document.getElementById('load-fill'), txt = document.getElementById('load-text');
     await this.assets.loadAll((f, name) => { fill.style.width = `${Math.round(f * 85)}%`; txt.textContent = `Loading ${name}…`; });
-    txt.textContent = 'Building the neighborhood…';
+    txt.textContent = 'Building the route…';
     await new Promise((r) => setTimeout(r, 20));
-    this.world = buildWorld(this.scene, this.assets, this.col);
+    this.world = buildRoute(this.scene, this.assets, this.col);
     this.lights = {};
     for (const l of this.world.lights) {
       const pl = new THREE.PointLight(l.color, l.intensity, l.distance, 1.7);
       pl.position.set(l.x, l.y, l.z); this.scene.add(pl); this.lights[l.kind] = pl;
     }
-    const post = new THREE.PointLight(PAL.lanternLight, 0, 26, 1.5); post.position.set(SHELTER.post.x + 0.8, 2.6, SHELTER.post.z); this.scene.add(post); this.lights.post = post;
     this.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && !o.userData.noSeeThrough) makeSeeThrough(o.material); });
     this.daynight = new DayNight(this.scene, this.renderer, this.quality);
     this.snow = new Snowfall(this.scene, this.quality.low ? 900 : 1800);
-    this.footprints = new Footprints(this.scene, 900);
-    this.inv = new Inventory(10);
-    this.tools = { axe: false, pistol: false };
+    this.footprints = new Footprints(this.scene, 700, false, 900);  // bounded pool, long life: the whole walk stays readable
     this.player = new Player(this);
-    this.player.setPosition(START.x, START.z);
-    this.shelter = new Shelter(this, this.world.dynamic);
-    this.zombies = new Zombies(this, this.world.zombieSpawns);
     this.wildlife = new Wildlife(this, this.world.animalSpawns);
-    this.combat = new Combat(this);
     this.interact = new Interactions(this, this.world.interact);
     this.audio = new Audio();
     this.ui = new UI(this);
-    this.goals = new Goals(this);
-    this.goals.update(1);
-    if (params.has('t')) this.daynight.hour = parseFloat(params.get('t'));
-    if (!params.has('fresh')) this.load();
-    if (params.has('at')) { const [x, z] = params.get('at').split(',').map(Number); this.player.setPosition(x, z); }
-    this.camera.update(0, this.player.pos, true);
-    this.daynight.apply(this.player.pos);
+    this.fixedHour = params.has('t') ? parseFloat(params.get('t')) : null;
+    this.resetRoute(false);
+    if (params.has('at')) { const [x, z] = params.get('at').split(',').map(Number); this.player.setPosition(x, z, Math.PI); this.snapCamera(); }
+    this.applyAtmosphere(0, true);
     fill.style.width = '100%';
-    // first frame compile before hiding the loader
     this.renderer.compile(this.scene, this.camera.cam);
     this.renderer.render(this.scene, this.camera.cam);
     this.perf.loadMs = Math.round(performance.now() - t0);
     document.getElementById('loading').classList.add('hidden');
     this.ui.show();
     document.getElementById('btn-start').onclick = () => this.start();
-    document.getElementById('btn-restart').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch {} location.search = params.has('dev') ? '?dev=1&fresh=1' : '?fresh=1'; };
+    document.getElementById('btn-restart').onclick = () => { this.resetRoute(true); this.start(); };
+    document.getElementById('btn-again').onclick = () => { this.resetRoute(true); this.start(); };
     if (params.has('autostart')) this.start(); else this.ui.toggleHelp(true);
     this.last = performance.now();
     this.renderer.setAnimationLoop(() => this.frame());
@@ -105,20 +95,36 @@ class Game {
     this.audio.start();
     this.ui.toggleHelp(false);
     this.paused = false;
-    if (!this.started) {
-      this.started = true;
-      document.getElementById('btn-start').textContent = 'Resume';
-      this.ui.toast('The fire needs wood. The woods are west, through the park gate.', 'info', 6000);
-      setTimeout(() => this.ui.toast('Store what you find in the pavilion stash — carried items are lost if you fall.', 'info', 6000), 2500);
-    }
+    if (!this.started) { this.started = true; document.getElementById('btn-start').textContent = 'Resume'; }
   }
+
+  /** Back to the shelter: position, gate, footprints, timer and light. */
+  resetRoute(fade) {
+    const go = () => {
+      this.ui.hideEnd();
+      this.player.frozen = false;
+      this.player.setPosition(START.x, START.z, START.yaw);
+      this.footprints.reset(); this.wildlife.prints.reset();
+      const gt = this.world.dynamic.gate; gt.target = 0; gt.open = 0; gt.group.rotation.y = 0; gt.collider.on = true;
+      this.interact.reset();
+      this.run = { t: 0, moving: false, arrived: false, gateOpenedAt: null };
+      this.daynight.hour = this.fixedHour ?? LIGHT_KEYS[0][1];
+      this.snapCamera();
+      this.ui.fade(false);
+    };
+    if (fade) { this.ui.fade(true); setTimeout(go, 600); } else go();
+  }
+
+  snapCamera() { this.camera.update(0, this.player.pos, null, true); }
 
   resize() {
     this.renderer.setSize(innerWidth, innerHeight);
-    this.camera.cam.aspect = innerWidth / innerHeight; this.camera.cam.updateProjectionMatrix();
+    this.camera.setAspect(innerWidth / innerHeight);
   }
 
-  surfaceAt(x, z) { const k = surfaceKindAt(x, z); return k === 'sand' ? 'sand' : k === 'snow' ? 'snow' : 'paved'; }
+  groundAt(x, z) { return groundKind(x, z); }
+  clampToRoute(x, z, r) { return clampToRoute(x, z, r); }
+  fireDist() { const p = this.player.pos; return Math.hypot(p.x - SHELTER_FIRE.x, p.z - SHELTER_FIRE.z); }
 
   frame() {
     const now = performance.now();
@@ -128,9 +134,9 @@ class Game {
     if (now - this.perf.t0 > 1000) { this.perf.fps = Math.round((this.perf.frames * 1000) / (now - this.perf.t0)); this.perf.frames = 0; this.perf.t0 = now; }
     this.handleKeys();
     if (!this.paused) this.update(dt);
-    else { this.player.mixer.update(0); }
-    this.camera.update(dt, this.player.pos);
-    this._stTarget = (this._stTarget || this.player.pos.clone()).copy(this.player.pos); this._stTarget.y += 1.0;
+    else this.player.mixer.update(0);
+    this.camera.update(this.paused ? 0 : dt, this.player.pos, this.player.vel);
+    this._stTarget = (this._stTarget || new THREE.Vector3()).copy(this.player.pos); this._stTarget.y += 1.0;
     updateSeeThrough(this.camera.cam, this.renderer, this._stTarget);
     this.renderer.render(this.scene, this.camera.cam);
     this.input.endFrame();
@@ -139,198 +145,91 @@ class Game {
 
   handleKeys() {
     const i = this.input;
-    if (i.hit('h') || i.hit('?')) this.ui.toggleHelp();
-    if (i.hit('escape')) {
-      if (this.ui.modal === 'shelter') this.ui.closeShelter();
-      else if (this.ui.modal === 'map') this.ui.toggleMap(false);
-      else this.ui.toggleHelp();
-    }
-    if (this.paused) return;
-    if (i.hit('m')) this.ui.toggleMap();
-    if (i.hit('n')) { this.daynight.skip(); this.ui.toast(this.daynight.hour > 12 ? 'Night falls.' : 'Morning comes.', 'info'); }
-    if (i.hit('c')) { this.camera.toggleCinematic(); this.ui.toast(this.camera.cinematic ? 'Cinematic camera (C to return)' : 'Gameplay camera', 'info', 1800); }
-    if (i.hit('z')) this.camera.rotate(-1);
-    if (i.hit('x')) this.camera.rotate(1);
-    if (i.hit('+') || i.hit('=') || i.tHit('zoomIn')) this.camera.zoom(-1);
-    if (i.hit('-') || i.hit('_') || i.tHit('zoomOut')) this.camera.zoom(1);
-    if (i.mouse.wheel) this.camera.zoom(i.mouse.wheel > 0 ? 1 : -1);
-    for (const [k, item] of Object.entries(USE_KEYS)) if (i.hit(k)) this.useItem(item);
-    if (params.has('dev')) {
-      for (const [k, [name, x, z]] of Object.entries(TELEPORTS)) if (i.hit(k)) { this.teleport(x, z); this.ui.toast(`[dev] ${name}`, 'info'); }
-      if (i.hit('g')) { this.inv.capacity = 30; for (const k of ['wood', 'food', 'medkit', 'oil', 'tarp', 'blanket', 'scrap', 'ammo']) this.inv.add(k, 3); this.tools.axe = this.tools.pistol = true; this.ui.toast('[dev] supplies', 'info'); }
+    if (i.hit('h') || i.hit('?') || i.hit('escape')) this.ui.toggleHelp();
+    if (i.hit('r') && this.ui.modal !== 'help') { this.resetRoute(true); if (this.paused) this.start(); }
+    if (params.has('dev') && !this.paused) {
+      ROUTE_TEST.marks.forEach((m, k) => { if (i.hit(String(k + 1))) { this.player.setPosition(m.x, m.z, Math.PI); this.snapCamera(); this.ui.toast(`[dev] ${m.id}`); } });
     }
   }
-
-  teleport(x, z) { this.player.setPosition(x, z); this.camera.update(0, this.player.pos, true); }
 
   update(dt) {
     this.noise *= Math.exp(-dt * 2);
-    this.daynight.update(dt, this.player.pos);
-    this.updateWeather(dt);
     this.player.update(dt, this.input, this.camera);
-    this.zombies.update(dt);
+    if (!this.run.moving && this.player.speed > 0.3) this.run.moving = true;
+    if (this.run.moving && !this.run.arrived) this.run.t += dt;
+    this.applyAtmosphere(dt);
     this.wildlife.update(dt);
-    this.combat.update(dt);
-    this.shelter.update(dt);
     this.interact.update(dt, this.input);
-    this.footprints.update(dt, this.daynight.isNight);
+    this.footprints.update(dt, this.daynight.nightness > 0.5);
     this.snow.update(dt, this.player.pos);
-    for (const w of this.world.water) w.userData.uniforms.uTime.value += dt;
-    this.updateSurvival(dt);
+    const gt = this.world.dynamic.gate;
+    if (gt.open !== gt.target) { gt.open += Math.sign(gt.target - gt.open) * Math.min(Math.abs(gt.target - gt.open), dt * 1.6); gt.group.rotation.y = gt.open; }
+    const f = this.world.dynamic.fire; if (f) f.scale.y = 1 + Math.sin(performance.now() * 0.02) * 0.04;
+    if (this.lights.fire) this.lights.fire.intensity = 30 * (0.9 + Math.random() * 0.12);
     this.audio.update(this);
-    // area banner
-    const a = areaAt(this.player.pos.x, this.player.pos.z);
-    if (a && a.id !== this.areaId) { this.areaId = a.id; this.ui.banner(a); this.stats.areas.add(a.id); }
-    this.ui.update();
-    this.goals.update(dt);
-    this._saveT = (this._saveT || 0) + dt;
-    if (this._saveT > 30) { this._saveT = 0; this.save(); }
   }
 
-  /** Passing snow squalls: visibility drops, snow thickens, the wind rises, the cold bites harder. */
-  updateWeather(dt) {
-    const w = this.weather || (this.weather = { t: 150 + Math.random() * 120, target: 0, squall: 0 });
-    w.t -= dt;
-    if (w.t <= 0) {
-      if (w.target === 0) { w.target = 1; w.t = 45 + Math.random() * 30; this.ui.toast('A snow squall rolls in off the ocean.', 'info', 4000); }
-      else { w.target = 0; w.t = 200 + Math.random() * 200; }
+  /** Light, fog and snowfall authored along the route (not a running clock). */
+  applyAtmosphere(dt, snap = false) {
+    const p = this.player.pos, prog = Math.max(0, Math.min(1, nearest(p.x, p.z).s / ROUTE_LENGTH));
+    let target = LIGHT_KEYS[LIGHT_KEYS.length - 1][1];
+    for (let k = 0; k < LIGHT_KEYS.length - 1; k++) {
+      const [a, ha] = LIGHT_KEYS[k], [b, hb] = LIGHT_KEYS[k + 1];
+      if (prog <= b) { target = lerp(ha, hb, smoothstep(a, b, prog)); break; }
     }
-    w.squall += (w.target - w.squall) * Math.min(1, dt * 0.35);
-    const fog = this.scene.fog;
-    fog.near *= 1 - 0.65 * w.squall; fog.far *= 1 - 0.6 * w.squall;
-    this.snow.intensity = 1 + 1.8 * w.squall;
-    // the far-bank lantern walker at night
-    const fl = this.world.dynamic.farLantern;
-    fl.visible = this.daynight.nightness > 0.6;
-    if (fl.visible) {
-      const t = performance.now() * 0.00002;
-      fl.position.x = 35 + Math.sin(t * 6) * 60; fl.position.y = 1.2 + Math.abs(Math.sin(performance.now() * 0.004)) * 0.08;
-      if (!this._sawLantern && Math.abs(this.player.pos.z - 57) < 8 && Math.abs(this.player.pos.x - fl.position.x) < 40) { this._sawLantern = true; this.ui.toast('A lantern moves along the far bank of the canal. Someone else is out there.', 'info', 6000); }
-    }
+    if (this.fixedHour != null) target = this.fixedHour;
+    this.daynight.hour += (target - this.daynight.hour) * (snap ? 1 : 1 - Math.exp(-dt * 0.8));
+    this.daynight.apply(this.camera.focus.lengthSq() ? this.camera.focus : p);
+    const sec = sectionAt(p.z), at = ATMOS[sec.id];
+    this.section = sec.id;
+    const k = snap ? 1 : 1 - Math.exp(-dt * 0.7);
+    this._fogFar = this._fogFar == null || snap ? at.fog : this._fogFar + (at.fog - this._fogFar) * k;
+    const fog = this.scene.fog; fog.near = this.camera.dist + 3; fog.far = fog.near + this._fogFar;
+    this.snow.intensity += (at.snow - this.snow.intensity) * k;
+    this.camera.zoomTarget = at.zoom;
+    if (snap) this.camera.zoom = at.zoom;
   }
 
-  updateSurvival(dt) {
-    const s = this.player.stats, p = this.player.pos;
-    if (this.player.dead) return;
-    // hunger: full to empty in about one in-game day
-    s.food = Math.max(0, (s.food ?? 100) - dt * (100 / 1440));
-    if (s.food <= 0 && !this._hungryWarn) { this._hungryWarn = true; this.ui.toast('Your stomach is empty. Eat something (1) — you tire and chill faster.', 'bad', 5000); }
-    if (s.food > 10) this._hungryWarn = false;
-    const nearFire = this.shelter.lit && this.shelter.distToFire(p) < this.shelter.warmZone;
-    const sheltered = this.shelter.upgrades.windbreak && this.shelter.inShelter(p);
-    if (nearFire) {
-      s.warmth = Math.min(100, s.warmth + dt * 7);
-      if (s.warmth > 60) s.health = Math.min(100, s.health + dt * 0.6);
-    } else if (!sheltered) {
-      let drain = (0.28 + 0.3 * this.daynight.nightness) * (1 + 0.35 * (this.weather?.squall || 0)) * ((s.food ?? 100) <= 0 ? 1.25 : 1);
-      if (this.player.lanternOn) drain *= 0.75;
-      s.warmth = Math.max(0, s.warmth - drain * dt);
-    }
-    if (s.warmth <= 0) {
-      s.health = Math.max(0, s.health - dt * 1.2);
-      this._coldWarn = (this._coldWarn || 0) - dt;
-      if (this._coldWarn <= 0) { this._coldWarn = 12; this.ui.toast("You're freezing. Get back to the fire.", 'bad'); }
-      if (s.health <= 0) this.onPlayerDown();
-    } else if (s.warmth < 25 && !this._lowWarm) { this._lowWarm = true; this.ui.toast('Your hands are going numb. Head for the fire.', 'bad'); }
-    if (s.warmth > 40) this._lowWarm = false;
+  openGate() {
+    const gt = this.world.dynamic.gate;
+    gt.target = 1.75; gt.collider.on = false;
+    this.run.gateOpenedAt = +this.run.t.toFixed(1);
+    this.audio.creak();
   }
 
-  useItem(id) {
-    const s = this.player.stats;
-    if (!this.inv.count(id)) { if (ITEMS[id]) this.ui.toast(`No ${ITEMS[id].name.toLowerCase()}.`, 'bad'); return; }
-    if (id === 'food') { s.health = Math.min(100, s.health + 20); s.warmth = Math.min(100, s.warmth + 10); s.food = Math.min(100, (s.food ?? 0) + 50); this.ui.toast('You eat cold beans. Better. (+food, +health, +warmth)', 'good'); }
-    else if (id === 'water') { s.stamina = 100; s.health = Math.min(100, s.health + 8); this.ui.toast('Icy water. (+stamina)', 'good'); }
-    else if (id === 'medkit') { if (s.health >= 100) { this.ui.toast('You are not hurt.', 'info'); return; } s.health = Math.min(100, s.health + 55); this.ui.toast('You patch yourself up. (+health)', 'good'); }
-    else if (id === 'oil') { if (s.oil >= 98) { this.ui.toast('The lantern is full.', 'info'); return; } s.oil = Math.min(100, s.oil + 55); this.ui.toast('Lantern refilled.', 'good'); }
-    else { this.ui.toast(`${ITEMS[id].name}: bring it to the shelter to build with.`, 'info'); return; }
-    this.inv.remove(id, 1); this.audio.pickup(); this.ui.refreshInventory();
-  }
-
-  onPlayerDown() {
-    if (this.player.dead) return;
-    this.player.die(); this.stats.deaths++;
-    const p = this.player.pos.clone();
-    const items = this.inv.clear();
-    this.ui.toast('Everything goes white…', 'bad', 4000);
-    setTimeout(() => this.ui.fade(true), 1600);
-    setTimeout(() => {
-      if (Object.keys(items).length) this.interact.add({ kind: 'pack', x: p.x, z: p.z, r: 2.0, hold: 1.0, label: 'Recover your dropped pack', items });
-      if (items.ammo) { this.inv.add('ammo', 0); }
-      this.player.revive();
-      this.player.setPosition(START.x, START.z);
-      Object.assign(this.player.stats, { health: 60, warmth: 80, stamina: 100, food: Math.max(this.player.stats.food ?? 0, 30) });
-      if (this.daynight.hour > 7) this.daynight.day++;
-      this.daynight.hour = 7.2;
-      this.zombies.resetAll();
-      this.camera.update(0, this.player.pos, true);
-      this.ui.fade(false);
-      this.ui.toast('You wake by the pavilion, shaking. Your pack is still out there — marked on the map (M).', 'info', 7000);
-      this.save();
-    }, 3400);
-  }
-
-  sleep(full) {
-    this.ui.fade(true); this.paused = true;
-    setTimeout(() => {
-      const s = this.player.stats;
-      if (full) {
-        if (this.daynight.hour > 7) this.daynight.day++;
-        this.daynight.hour = 7.0; s.health = 100; s.warmth = 100; s.stamina = 100; s.food = Math.max(0, (s.food ?? 100) - 25);
-        this.shelter.fuel = Math.max(0, this.shelter.fuel - 30); if (this.shelter.fuel <= 0) this.shelter.lit = false;
-        this.zombies.resetAll();
-      } else {
-        this.daynight.hour += 2; if (this.daynight.hour >= 24) { this.daynight.hour -= 24; this.daynight.day++; }
-        s.health = Math.min(100, s.health + 20); s.warmth = 100; s.food = Math.max(0, (s.food ?? 100) - 8);
-        this.shelter.fuel = Math.max(1, this.shelter.fuel - 15);
-      }
-      this.daynight.apply(this.player.pos);
-      this.save();
-      this.ui.fade(false); this.paused = false;
-      this.ui.toast(full ? `Day ${this.daynight.day}. You slept through the night. Progress saved.` : 'You doze by the fire for two hours.', 'good', 4500);
-    }, 1300);
-  }
-
-  save() {
-    try {
-      const d = {
-        v: 1, hour: this.daynight.hour, day: this.daynight.day, pos: [this.player.pos.x, this.player.pos.z], stats: this.player.stats,
-        inv: this.inv.toJSON(), tools: this.tools, shelter: this.shelter.toJSON(), used: this.interact.usedIds(), dog: this.stats.dog, areas: [...this.stats.areas],
-      };
-      localStorage.setItem(SAVE_KEY, JSON.stringify(d));
-    } catch { /* storage unavailable: play without saving */ }
-  }
-  load() {
-    let d;
-    try { d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch { d = null; }
-    if (!d || d.v !== 1) return false;
-    this.daynight.hour = d.hour; this.daynight.day = d.day;
-    this.player.setPosition(d.pos[0], d.pos[1]);
-    Object.assign(this.player.stats, d.stats);
-    this.inv = Inventory.from(d.inv); this.tools = d.tools;
-    this.shelter.load(d.shelter);
-    this.interact.restoreUsed(d.used || []);
-    this.stats.areas = new Set(d.areas || []);
-    if (d.dog) { this.wildlife.befriend(); this.stats.dog = true; const dg = this.wildlife.dog; if (dg) dg.obj.position.set(d.pos[0] + 1.5, 0, d.pos[1] + 1.5); }
-    return true;
+  arrive() {
+    if (this.run.arrived) return;
+    this.run.arrived = true; this.player.frozen = true;
+    setTimeout(() => { this.ui.fade(true); }, 900);
+    setTimeout(() => { this.ui.fade(false); this.ui.showEnd(this.run.t); }, 2200);
   }
 
   debugOverlay() {
     const el = this.ui.el.debug; el.classList.remove('hidden');
-    const p = this.player.pos, info = this.renderer.info.render;
-    el.textContent = `fps ${this.perf.fps}  worst ${this.perf.worst.toFixed(0)}ms  load ${this.perf.loadMs}ms\npos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}  area ${this.areaId}\n` +
-      `time ${this.daynight.timeString()} night ${this.daynight.nightness.toFixed(2)}\ncalls ${info.calls} tris ${info.triangles}\nzombies ${this.zombies.alive().length}  prints ${this.footprints.count}`;
+    const p = this.player.pos, info = this.renderer.info.render, n = nearest(p.x, p.z);
+    el.textContent = `fps ${this.perf.fps}  worst ${this.perf.worst.toFixed(0)}ms  load ${this.perf.loadMs}ms\npos ${p.x.toFixed(1)}, ${p.z.toFixed(1)}  s ${n.s.toFixed(0)}/${ROUTE_LENGTH.toFixed(0)}  ${this.section}\n` +
+      `ground ${this.groundAt(p.x, p.z)}  speed ${this.player.speed?.toFixed(2)}  t ${this.run.t.toFixed(1)}s\nhour ${this.daynight.hour.toFixed(2)}  calls ${info.calls} tris ${info.triangles}  prints ${this.footprints.count}`;
   }
 
-  /** compact state for automated playtests */
+  /** the newest n footprints as [x, height above ground, z] (playtest: spacing and floating checks) */
+  printsSample(n = 40) {
+    const fp = this.footprints, m = new THREE.Matrix4(), v = new THREE.Vector3(), out = [];
+    for (let k = 1; k <= Math.min(n, fp.count, fp.max); k++) {
+      fp.mesh.getMatrixAt((fp.i - k + fp.max) % fp.max, m); v.setFromMatrixPosition(m);
+      out.push([+v.x.toFixed(2), +(v.y - 0.02 - groundHeight(v.x, v.z)).toFixed(3), +v.z.toFixed(2)]);
+    }
+    return out;
+  }
+
+  /** compact state for automated playtests and captures */
   state() {
-    const p = this.player.pos;
+    const p = this.player.pos, n = nearest(p.x, p.z);
     return {
-      pos: [+p.x.toFixed(2), +p.z.toFixed(2)], area: this.areaId, hour: +this.daynight.hour.toFixed(2), day: this.daynight.day, night: this.daynight.isNight,
-      stats: { ...this.player.stats }, inv: { ...this.inv.items }, capacity: this.inv.capacity, tools: { ...this.tools }, stash: { ...this.shelter.stash.items },
-      fire: { lit: this.shelter.lit, fuel: +this.shelter.fuel.toFixed(1) }, upgrades: { ...this.shelter.upgrades }, lanternOn: this.player.lanternOn,
-      prints: this.footprints.count, zombies: this.zombies.alive().map((z) => [+z.obj.position.x.toFixed(1), +z.obj.position.z.toFixed(1), z.state]),
-      prompt: this.ui._prompt, dead: this.player.dead, fps: this.perf.fps, worstFrame: +this.perf.worst.toFixed(1), loadMs: this.perf.loadMs,
-      cam: { level: this.camera.level, height: +this.camera.height.toFixed(1), yaw: +this.camera.targetYaw.toFixed(2) }, areas: [...this.stats.areas], log: this.log.slice(-8),
+      pos: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +p.y.toFixed(3), s: +n.s.toFixed(1), lat: +n.d.toFixed(2), w: +n.w.toFixed(2), routeLength: +ROUTE_LENGTH.toFixed(1), section: this.section, ground: this.groundAt(p.x, p.z),
+      speed: +(this.player.speed || 0).toFixed(2), yaw: +this.player.yaw.toFixed(2), gateOpen: this.world.dynamic.gate.target > 0, gateOpenedAt: this.run.gateOpenedAt,
+      arrived: this.run.arrived, walkTime: +this.run.t.toFixed(1), prints: this.footprints.count, footfalls: this.player.footfalls, prompt: this.ui._prompt, modal: this.ui.modal,
+      hour: +this.daynight.hour.toFixed(2), fps: this.perf.fps, worstFrame: +this.perf.worst.toFixed(1), loadMs: this.perf.loadMs,
+      cam: { yaw: this.camera.yaw, pos: this.camera.cam.position.toArray().map((v) => +v.toFixed(2)) }, gait: this.player.gait, log: this.log.slice(-5),
     };
   }
 }

@@ -3,14 +3,15 @@ import { footprintTexture, pawprintTexture } from '../world/textures.js';
 
 // Instanced footprint decals. Each print fades from a shadow-blue toward the snow color over time
 // (instance color multiplies the texture), so old tracks disappear without transparency sorting.
+// The pool is bounded (max prints); the oldest print is reused when it is full.
 export class Footprints {
-  constructor(scene, max = 900, paw = false) {
-    this.max = max; this.i = 0; this.life = paw ? 90 : 150;
+  constructor(scene, max = 900, paw = false, life = paw ? 90 : 150) {
+    this.max = max; this.i = 0; this.life = life;
     const g = new THREE.PlaneGeometry(paw ? 0.2 : 0.2, paw ? 0.2 : 0.36);
     g.rotateX(-Math.PI / 2);
     const m = new THREE.MeshBasicMaterial({
       map: paw ? pawprintTexture() : footprintTexture(), transparent: true, depthWrite: false,
-      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true, side: THREE.DoubleSide,
     });
     // instance color red channel = print opacity; rgb comes from the material tint
     m.onBeforeCompile = (s) => {
@@ -32,15 +33,21 @@ export class Footprints {
     this.count = 0;
   }
 
-  /** place a print; strength 0..1 (lighter on pavement) */
-  add(x, y, z, yaw, strength = 1) {
+  /** place a print; strength 0..1+ (lighter on pavement, darker in deep snow); side -1 mirrors a left foot */
+  add(x, y, z, yaw, strength = 1, side = 1, scale = 1) {
     const k = this.i; this.i = (this.i + 1) % this.max;
     this._q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-    this._m.compose(new THREE.Vector3(x, y + 0.02, z), this._q, new THREE.Vector3(1, 1, 1));
+    this._m.compose(new THREE.Vector3(x, y + 0.02, z), this._q, new THREE.Vector3(side < 0 ? -scale : scale, 1, scale));
     this.mesh.setMatrixAt(k, this._m);
     this.born[k] = this.time; this.strength[k] = strength;
     this.mesh.instanceMatrix.needsUpdate = true;
     this.count++;
+  }
+
+  reset() {
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    for (let k = 0; k < this.max; k++) { this.mesh.setMatrixAt(k, zero); this.born[k] = -1e9; }
+    this.mesh.instanceMatrix.needsUpdate = true; this.i = 0; this.count = 0;
   }
 
   update(dt, night) {
@@ -52,7 +59,7 @@ export class Footprints {
     for (let k = 0; k < this.max; k++) {
       const age = this.time - this.born[k];
       if (age > this.life + 1) continue;
-      const f = Math.max(0, 1 - age / this.life) * this.strength[k] * 0.75;
+      const f = Math.min(1, Math.max(0, 1 - age / this.life) * this.strength[k] * 0.75);
       tint.setRGB(f, f, f);
       this.mesh.setColorAt(k, tint);
     }

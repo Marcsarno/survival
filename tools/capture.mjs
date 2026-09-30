@@ -62,9 +62,17 @@ async function setKeys(page, keys) {
 }
 /** Walk toward (x,z) with WASD relative to the camera's yaw (works for the old rotated camera and the fixed one). */
 async function walkTo(page, x, z, { tol = 1.2, timeout = 40000, extra = [] } = {}) {
-  const t0 = Date.now();
+  const t0 = Date.now(); let lastD = Infinity, lastT = Date.now(), side = 0;
   while (Date.now() - t0 < timeout) {
     const s = await st(page);
+    if (s.arrived) { await setKeys(page, []); return true; }
+    const dd = Math.hypot(x - s.pos[0], z - s.pos[1]);
+    if (dd < lastD - 0.3) { lastD = dd; lastT = Date.now(); }
+    if (Date.now() - lastT > 2000) { // stuck: log it, sidestep and retry (like a player would)
+      log('stuck near', s.pos, 'heading for', [x, z]); meta.stuck = [...(meta.stuck || []), { pos: s.pos, target: [x, z] }];
+      if (++side > 4) { await setKeys(page, []); return false; }
+      await setKeys(page, [side % 2 ? 'a' : 'd']); await sleep(600); lastT = Date.now(); lastD = Infinity;
+    }
     const yaw = await page.evaluate(() => window.__game.camera.yaw || 0);
     const F = [-Math.sin(yaw), -Math.cos(yaw)], R = [Math.cos(yaw), -Math.sin(yaw)];
     const dx = x - s.pos[0], dz = z - s.pos[1], d = Math.hypot(dx, dz);
@@ -154,6 +162,17 @@ try {
       await shot(page, 'phone-after-motion', 'Footprints left by the motion test.', 'phone');
     }
     await ctx.close();
+    if (want('clip-gait-close')) {
+      // a test-only close camera (?cam=) so the feet and prints can be judged; not the game camera
+      const o = await open('phone', 'cam=34,7,0.6,0&at=-8.5,15');
+      await clip(o.page, 'clip-gait-close', 'Close test camera (?cam=34,7,0.6,0): walk north 2.5 s, jog (Shift) 2 s, release, then D and S. Keyboard input.', 'phone', async () => {
+        await setKeys(o.page, ['w']); await sleep(2500); await setKeys(o.page, ['w', 'Shift']); await sleep(2000);
+        await setKeys(o.page, []); await sleep(1200); await setKeys(o.page, ['d']); await sleep(900); await setKeys(o.page, ['s']); await sleep(1000); await setKeys(o.page, []); await sleep(900);
+      });
+      await shot(o.page, 'phone-gait-close', 'Close test camera: prints left by the gait clip.', 'phone');
+      meta.gait = (await st(o.page)).gait;
+      await o.ctx.close();
+    }
     for (const m of route) {
       const name = `phone-${m.id}`;
       if (!want(name)) continue;

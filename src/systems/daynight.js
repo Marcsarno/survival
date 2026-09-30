@@ -13,8 +13,8 @@ const KEYS = [ // hour, sky, sunColor, sunIntensity, hemiSky, hemiGround, hemiIn
   [12, '#c4d8ee', '#fff4e6', 3.0, '#d2def0', '#8f93a0', 1.05, '#d0dcea', 1.0],
   [16, '#c9cfe0', '#ffe0b8', 2.6, '#c8d0e6', '#8a8490', 0.95, '#cdd2e2', 1.0],
   [18, '#e0a684', '#ffb070', 2.2, '#b8a8c4', '#7a6a6c', 1.0, '#d0a898', 1.0],
-  [19.3, '#56507a', '#c090a8', 0.9, '#5a6090', '#2e2c3e', 0.75, '#484a70', 1.0],
-  [20.5, '#141c30', '#9db3e6', 0.85, '#34466e', '#1d2436', 0.75, '#1a2440', 1.0],
+  [19.3, '#56507a', '#c090a8', 0.95, '#6470a0', '#34324a', 0.95, '#484a70', 1.0],
+  [20.5, '#18223a', '#a8bcec', 1.0, '#44588a', '#252c42', 1.0, '#1e2a48', 1.0],
   [24, '#0f1728', '#9db3e6', 0.85, '#34466e', '#1d2436', 0.75, '#18213a', 1.0],
 ];
 const cols = KEYS.map((k) => k.map((v) => (typeof v === 'string' ? new THREE.Color(v) : v)));
@@ -61,12 +61,13 @@ export class DayNight {
     this.nightness = h < 6 ? 1 - smoothstep(5, 6.8, h) : smoothstep(18.2, 20.2, h);
     this.scene.fog.near = lerp(60, 26, this.nightness); this.scene.fog.far = lerp(190, 95, this.nightness);
     // sun by day, moon by night: both come from the south-east-ish so shadows read well from the camera
-    const day = h >= 6 && h <= 19.5;
-    const ang = day ? ((h - 6) / 13.5) * Math.PI : 0.9;
-    // the sun swings from south-east to south-south-west but stays on the camera side, so faces read lit
-    const tday = Math.min(1, Math.max(0, (h - 6) / 13.5));
-    const dir = new THREE.Vector3(lerp(1.0, -0.35, tday), Math.max(0.45, Math.sin(ang)) * 1.1, 0.9).normalize();
-    if (!day) dir.set(-0.45, 1.0, 0.6).normalize();
+    // the sun swings from south-east to south-south-west but stays on the camera side, so faces read lit;
+    // at dusk it hands over smoothly to the moon (no jump in shadow direction)
+    const hs = Math.min(19.5, Math.max(6, h)), ang = ((hs - 6) / 13.5) * Math.PI, tday = (hs - 6) / 13.5;
+    const sunDir = new THREE.Vector3(lerp(1.0, -0.35, tday), Math.max(0.45, Math.sin(ang)) * 1.1, 0.9).normalize();
+    const moonDir = new THREE.Vector3(-0.45, 1.0, 0.6).normalize();
+    const toMoon = h > 12 ? smoothstep(19.1, 19.9, h) : 1 - smoothstep(5.2, 6.2, h);
+    const dir = sunDir.lerp(moonDir, toMoon).normalize();
     this.sun.position.copy(focus).addScaledVector(dir, 80);
     this.sun.target.position.copy(focus);
   }

@@ -1,38 +1,50 @@
 import * as THREE from 'three';
-import { clamp, lerp, angleLerp } from '../core/util.js';
 
-// Elevated three-quarter follow camera. Height is adjustable (wheel, +/-, touch buttons),
-// yaw rotates in 45° steps (Z/X). Pitch rises slightly as the camera goes higher.
-export const CAM_LEVELS = [9, 12, 15, 19, 24, 30];
+// Fixed-angle isometric tracking camera. It never rotates: it sits south of the player looking north,
+// so up-screen is always north, the direction of travel. The framing puts the player below the
+// middle of the screen and leads toward north and toward where the player is moving, so there is
+// room to see what lies ahead. Portrait and landscape use different distances and FOVs.
+const PORTRAIT = { fov: 52, dist: 22, pitch: 0.86, lead: 6 };   // pitch: radians above the horizon
+const LANDSCAPE = { fov: 36, dist: 26, pitch: 0.86, lead: 3.5 };
+// tuning aid: ?cam=fov,dist,pitch,lead overrides the portrait (or landscape) values
+const q = new URLSearchParams(location.search).get('cam');
+if (q) { const [fov, dist, pitch, lead] = q.split(',').map(Number); for (const c of [PORTRAIT, LANDSCAPE]) Object.assign(c, { fov: fov || c.fov, dist: dist || c.dist, pitch: pitch || c.pitch, lead: lead ?? c.lead }); }
 
 export class FollowCamera {
   constructor(aspect) {
-    this.cam = new THREE.PerspectiveCamera(38, aspect, 0.5, 400);
-    this.level = aspect < 0.8 ? 3 : 2; this.height = CAM_LEVELS[this.level];
-    this.yaw = Math.PI / 4; this.targetYaw = this.yaw;
+    this.cam = new THREE.PerspectiveCamera(PORTRAIT.fov, aspect, 0.5, 260);
+    this.yaw = 0;            // fixed; kept as a field so tools can read the basis
     this.focus = new THREE.Vector3();
+    this.lead = new THREE.Vector3();
     this.shake = 0;
+    this.zoom = 1; this.zoomTarget = 1;   // authored per section by the game (1 = default distance)
+    this.setAspect(aspect);
   }
-  zoom(d) { this.cinematic = false; this.level = clamp(this.level + d, 0, CAM_LEVELS.length - 1); }
-  toggleCinematic() { this.cinematic = !this.cinematic; }
-  rotate(d) { this.targetYaw += d * Math.PI / 4; }
-  /** unit vectors on the ground for screen-up and screen-right */
-  basis() {
-    const f = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
-    const r = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
-    return { forward: f, right: r };
+  setAspect(aspect) {
+    this.cfg = aspect < 0.9 ? PORTRAIT : LANDSCAPE;
+    this.cam.fov = this.cfg.fov; this.cam.aspect = aspect; this.cam.updateProjectionMatrix();
   }
-  update(dt, target, snap = false) {
-    const k = snap ? 1 : 1 - Math.exp(-dt * 6);
-    this.focus.lerp(target, k);
-    this.height = lerp(this.height, this.cinematic ? 4.2 : CAM_LEVELS[this.level], snap ? 1 : 1 - Math.exp(-dt * 5));
-    this.yaw = angleLerp(this.yaw, this.targetYaw, snap ? 1 : 1 - Math.exp(-dt * 7));
-    // radians above the horizon: steeper as the camera rises; the cinematic view sits low and close
-    const pitch = this.height < 8 ? lerp(0.32, 0.82, (this.height - 4.2) / 4.8) : lerp(0.82, 1.0, (this.height - 9) / 21);
-    const dist = this.height / Math.tan(pitch);
-    const c = this.cam;
-    c.position.set(this.focus.x + Math.sin(this.yaw) * dist, this.focus.y + this.height, this.focus.z + Math.cos(this.yaw) * dist);
-    if (this.shake > 0) { c.position.x += (Math.random() - 0.5) * this.shake; c.position.y += (Math.random() - 0.5) * this.shake; this.shake = Math.max(0, this.shake - dt * 2); }
-    c.lookAt(this.focus.x, this.focus.y + 0.8, this.focus.z);
+  /** ground unit vectors for screen-up and screen-right: always north and east */
+  basis() { return { forward: new THREE.Vector3(0, 0, -1), right: new THREE.Vector3(1, 0, 0) }; }
+  get dist() { return this.cfg.dist * this.zoom; }
+
+  /** target: player position; vel: player velocity (m/s) for a small look-ahead in the direction of motion */
+  update(dt, target, vel, snap = false) {
+    const c = this.cfg;
+    // lead: always a little north, plus up to ~2.5 m toward the motion (smoothed so stops don't jolt)
+    const lx = vel ? Math.max(-2.5, Math.min(2.5, vel.x * 0.55)) : 0;
+    const lz = -c.lead + (vel ? Math.max(-2.5, Math.min(2.5, vel.z * 0.55)) : 0);
+    const kl = snap ? 1 : 1 - Math.exp(-dt * 1.6);
+    this.lead.x += (lx - this.lead.x) * kl; this.lead.z += (lz - this.lead.z) * kl;
+    this.zoom += (this.zoomTarget - this.zoom) * (snap ? 1 : 1 - Math.exp(-dt * 0.6));
+    const k = snap ? 1 : 1 - Math.exp(-dt * 5);
+    this.focus.x += (target.x + this.lead.x - this.focus.x) * k;
+    this.focus.z += (target.z + this.lead.z - this.focus.z) * k;
+    this.focus.y += (target.y - this.focus.y) * (snap ? 1 : 1 - Math.exp(-dt * 3));
+    const cam = this.cam;
+    const d = this.dist;
+    cam.position.set(this.focus.x, this.focus.y + Math.sin(c.pitch) * d, this.focus.z + Math.cos(c.pitch) * d);
+    if (this.shake > 0) { cam.position.x += (Math.random() - 0.5) * this.shake; cam.position.y += (Math.random() - 0.5) * this.shake; this.shake = Math.max(0, this.shake - dt * 2); }
+    cam.lookAt(this.focus.x, this.focus.y + 0.6, this.focus.z);
   }
 }

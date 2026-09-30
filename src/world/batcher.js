@@ -60,16 +60,21 @@ export class Batcher {
   }
 }
 
-/** Instanced placement of GLB models (all mesh parts of a model share the instance transforms). */
+/**
+ * Instanced placement of GLB models (all mesh parts of a model share the instance transforms).
+ * Instances are grouped per model and per chunk of the ground, so chunks outside the view
+ * (and outside the shadow camera) are culled.
+ */
 export class Instancer {
-  constructor(scene, assets) { this.scene = scene; this.assets = assets; this.lists = new Map(); }
+  constructor(scene, assets, chunk = 48) { this.scene = scene; this.assets = assets; this.chunk = chunk; this.lists = new Map(); }
   add(name, matrix) {
-    if (!this.lists.has(name)) this.lists.set(name, []);
-    this.lists.get(name).push(matrix);
+    const e = matrix.elements, key = name + '|' + Math.floor(e[12] / this.chunk) + ',' + Math.floor(e[14] / this.chunk);
+    if (!this.lists.has(key)) this.lists.set(key, { name, mats: [] });
+    this.lists.get(key).mats.push(matrix);
   }
   finalize() {
     const out = [];
-    for (const [name, mats] of this.lists) {
+    for (const { name, mats } of this.lists.values()) {
       for (const part of this.assets.parts(name)) {
         const im = new THREE.InstancedMesh(part.geometry, part.material, mats.length);
         const tmp = new THREE.Matrix4();

@@ -25,7 +25,12 @@ export function groundHeight(x, z) {
   return v >= u ? h00 + (h11 - h01) * u + (h01 - h00) * v : h00 + (h10 - h00) * u + (h11 - h10) * v;
 }
 
-export function buildGround(scene, { waterPolys, trailLines, darkPolys }) {
+/**
+ * bounds: terrain extent (replaces WORLD). heightAt(x, z): authored height added to the small noise
+ * (banks either side of the trail). tintAt(x, z): 0..1 packed-trail tint. roughAt(x, z): 0..1 extra bumpiness (drifts).
+ */
+export function buildGround(scene, { bounds, waterPolys = [], trailLines = [], darkPolys, heightAt, tintAt, roughAt }) {
+  if (bounds) Object.assign(WORLD, bounds);
   const rng = mulberry32(99);
   const cell = CELL;
   const nx = Math.ceil((WORLD.x1 - WORLD.x0) / cell), nz = Math.ceil((WORLD.z1 - WORLD.z0) / cell);
@@ -34,19 +39,20 @@ export function buildGround(scene, { waterPolys, trailLines, darkPolys }) {
   for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) {
     const x = WORLD.x0 + i * cell, z = WORLD.z0 + j * cell;
     const r = mulberry32(i * 7919 + j * 104729)();
-    let h = 0.04 * Math.sin(x * 0.21 + z * 0.13) * Math.cos(z * 0.17 - x * 0.07) + (r - 0.5) * 0.24;
+    let h = 0.04 * Math.sin(x * 0.21 + z * 0.13) * Math.cos(z * 0.17 - x * 0.07) + (r - 0.5) * 0.24 * (1 + 1.5 * (roughAt ? roughAt(x, z) : 0));
     // pull snow down under pavement so overlays stay visible
     let paved = false;
     for (const [dx, dz] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]]) { const k = surfaceKindAt(x + dx, z + dz); if (k !== 'snow' && k !== 'sand') { paved = true; break; } }
     if (paved) h = -0.06; else if (surfaceKindAt(x, z) === 'sand') h = h * 0.4;
+    else if (heightAt) h += heightAt(x, z);
     if (inWaterV(x, z)) h = -0.9;
     HG[i * (nz + 1) + j] = h;
   }
   const pos = [], col = [];
-  const base = new THREE.Color(PAL.snow), shade = new THREE.Color('#dde4f1'), blue = new THREE.Color('#d2dcee'), trail = new THREE.Color('#cdd5e4');
+  const base = new THREE.Color(PAL.snow), shade = new THREE.Color('#dde4f1'), blue = new THREE.Color('#d2dcee'), trail = new THREE.Color('#aab5cb');
   const H = (i, j) => hAt(i, j);
   const inWater = (x, z) => waterPolys.some((p) => pointInPoly(x, z, p));
-  const nearTrail = (x, z) => trailLines.some((l) => distToPolyline(x, z, l) < 1.6);
+  const nearTrail = tintAt ? (x, z) => tintAt(x, z) > 0.5 : (x, z) => trailLines.some((l) => distToPolyline(x, z, l) < 1.6);
   const c = new THREE.Color();
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     const x = WORLD.x0 + i * cell, z = WORLD.z0 + j * cell;
@@ -57,7 +63,7 @@ export function buildGround(scene, { waterPolys, trailLines, darkPolys }) {
     for (const t of tris) {
       const r = rng();
       c.copy(base).lerp(r < 0.3 ? shade : blue, r * 0.45);
-      if (nearTrail(cx, cz)) c.lerp(trail, 0.55);
+      if (nearTrail(cx, cz)) c.lerp(trail, 0.72);
       if (darkPolys && darkPolys.some((p) => pointInPoly(cx, cz, p))) c.lerp(new THREE.Color('#c3cbd9'), 0.4);
       for (const k of t) { pos.push(...v[k]); col.push(c.r, c.g, c.b); }
     }

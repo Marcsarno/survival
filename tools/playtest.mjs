@@ -1,7 +1,9 @@
-// Automated playtest: drives the game with real keyboard / mouse / pointer input in Chromium,
-// walks every route between areas, exercises the systems and writes screenshots + a JSON report.
+// Automated playtest for the opening-route slice. Drives the game in Chromium with real keyboard and
+// pointer input: start screen, fixed camera, movement feel (acceleration, stopping), collisions, the
+// route boundary, the gate, footprints, the full walk to the house, the end card, restart, and an
+// emulated portrait touch phone. Writes playtest-output/results.json and screenshots to docs/screenshots/.
 //
-// Usage:  node tools/playtest.mjs [--headed] [--only=start,woods,...] [--url=http://localhost:5173/]
+// Usage:  node tools/playtest.mjs [--headed] [--only=move,route,touch] [--url=http://localhost:5173/]
 // Without --url it starts its own Vite dev server on port 5199.
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
@@ -14,10 +16,11 @@ const SHOTS = path.join(ROOT, 'docs', 'screenshots');
 fs.mkdirSync(OUT, { recursive: true }); fs.mkdirSync(SHOTS, { recursive: true });
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => { const [k, v] = a.replace(/^--/, '').split('='); return [k, v ?? true]; }));
 const ONLY = argv.only ? String(argv.only).split(',') : null;
+const want = (n) => !ONLY || ONLY.includes(n);
 
 const results = []; const t0 = Date.now();
 const log = (...a) => console.log(`[${((Date.now() - t0) / 1000).toFixed(0).padStart(4)}s]`, ...a);
-function record(name, pass, detail = {}) { results.push({ name, pass, ...detail }); log(pass ? 'PASS' : 'FAIL', name, JSON.stringify(detail).slice(0, 300)); }
+function record(name, pass, detail = {}) { results.push({ name, pass, ...detail }); log(pass ? 'PASS' : 'FAIL', name, JSON.stringify(detail).slice(0, 320)); }
 
 async function startServer() {
   if (argv.url) return { url: argv.url, stop: () => {} };
@@ -29,100 +32,42 @@ async function startServer() {
   return { url: 'http://localhost:5199/', stop: () => { try { process.platform === 'win32' ? spawn('taskkill', ['/pid', p.pid, '/f', '/t']) : p.kill(); } catch {} } };
 }
 
-// ------------------------------------------------------------------ helpers
-const YAW = Math.PI / 4;
-const FWD = [-Math.sin(YAW), -Math.cos(YAW)], RIGHT = [Math.cos(YAW), -Math.sin(YAW)];
 let page, errors = [];
-const state = () => page.evaluate(() => window.__game.state());
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const state = () => page.evaluate(() => window.__game.state());
 const held = new Set();
 async function setKeys(keys) {
   for (const k of [...held]) if (!keys.includes(k)) { await page.keyboard.up(k); held.delete(k); }
   for (const k of keys) if (!held.has(k)) { await page.keyboard.down(k); held.add(k); }
 }
 async function tap(key, ms = 60) { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); }
-async function shot(name, keep = false) {
-  const file = path.join(keep ? SHOTS : OUT, `${name}.png`);
-  await page.screenshot({ path: file });
-  return path.relative(ROOT, file).replace(/\\/g, '/');
-}
+async function shot(name) { const f = path.join(SHOTS, `${name}.png`); await page.screenshot({ path: f }); return path.relative(ROOT, f).replace(/\\/g, '/'); }
 
-/** Like a player would: shoot a chasing zombie that gets close, or swing when it is on top of us. */
-async function defend(s) {
-  const near = s.zombies.map((z) => [z, Math.hypot(z[0] - s.pos[0], z[1] - s.pos[1])]).filter(([z, d]) => d < 7 && z[2] !== 'wander').sort((a, b) => a[1] - b[1]);
-  if (!near.length) return false;
-  if (!s.tools.axe && !((s.inv.ammo || 0) > 0)) return false; // unarmed: keep moving, a shove won't win the fight
-  const [[zx, zz], d] = near[0];
-  await setKeys([]);
-  if (s.tools.pistol && (s.inv.ammo || 0) > 0 && d > 1.6) {
-    let [sx, sy] = await screenPos(zx, 1.2, zz);
-    await page.mouse.move(sx, sy); await page.mouse.down({ button: 'right' }); await sleep(650);
-    const s2 = await state(); const z2 = s2.zombies.sort((a, b) => Math.hypot(a[0] - zx, a[1] - zz) - Math.hypot(b[0] - zx, b[1] - zz))[0];
-    if (z2) { [sx, sy] = await screenPos(z2[0], 1.2, z2[1]); await page.mouse.move(sx, sy); }
-    await page.mouse.down({ button: 'left' }); await sleep(50); await page.mouse.up({ button: 'left' }); await sleep(200);
-    await page.mouse.up({ button: 'right' });
-  } else { await tap('f'); await sleep(500); }
-  defended++;
-  return true;
-}
-let defended = 0;
-
-/** Walk to (x,z) with WASD relative to the camera. Returns {ok, pos, stuck}. */
-async function walkTo(x, z, { tol = 1.3, timeout = 60000, sprint = true, fight = true } = {}) {
-  const start = Date.now(); let last = await state(), lastProgressT = Date.now(), lastD = Infinity, sidesteps = 0;
+/** Walk to (x,z) with WASD. The camera never rotates, so W is always north (-z) and D east (+x). */
+let walked = 0;
+async function walkTo(x, z, { tol = 1.3, timeout = 45000, keys: extra = [] } = {}) {
+  const start = Date.now(); let lastD = Infinity, lastProgressT = Date.now(), side = 0, prev = await state();
   while (Date.now() - start < timeout) {
     const s = await state();
-    if (s.dead) { await setKeys([]); return { ok: false, pos: s.pos, dead: true }; }
-    if (fight && await defend(s)) { lastProgressT = Date.now(); continue; }
-    if (s.stats.health < 45 && (s.inv.medkit || 0) > 0) await tap('2');
+    walked += Math.hypot(s.pos[0] - prev.pos[0], s.pos[1] - prev.pos[1]); prev = s;
     const dx = x - s.pos[0], dz = z - s.pos[1], d = Math.hypot(dx, dz);
-    if (d < tol) { await setKeys([]); return { ok: true, pos: s.pos }; }
-    const f = (dx * FWD[0] + dz * FWD[1]) / d, r = (dx * RIGHT[0] + dz * RIGHT[1]) / d;
-    const keys = [];
-    if (f > 0.38) keys.push('w'); if (f < -0.38) keys.push('s');
-    if (r > 0.38) keys.push('d'); if (r < -0.38) keys.push('a');
-    if (sprint && s.stats.stamina > 15) keys.push('Shift');
+    if (d < tol || s.arrived) { await setKeys([]); return { ok: true, pos: s.pos }; }
+    const keys = [...extra];
+    if (-dz / d > 0.38) keys.push('w'); if (dz / d > 0.38) keys.push('s');
+    if (dx / d > 0.38) keys.push('d'); if (-dx / d > 0.38) keys.push('a');
     await setKeys(keys);
-    if (d < lastD - 0.4) { lastD = d; lastProgressT = Date.now(); }
+    if (d < lastD - 0.3) { lastD = d; lastProgressT = Date.now(); }
     if (Date.now() - lastProgressT > 2500) { // stuck: sidestep and retry
-      sidesteps++;
-      if (sidesteps > 4) { await setKeys([]); return { ok: false, pos: s.pos, stuck: true }; }
-      await setKeys([sidesteps % 2 ? 'a' : 'd']); await sleep(700); lastProgressT = Date.now(); lastD = Infinity;
+      if (++side > 4) { await setKeys([]); return { ok: false, pos: s.pos, stuck: true }; }
+      await setKeys([side % 2 ? 'a' : 'd']); await sleep(600); lastProgressT = Date.now(); lastD = Infinity;
     }
-    await sleep(80);
-    last = s;
+    await sleep(60);
   }
   await setKeys([]);
-  return { ok: false, pos: last.pos, timeout: true };
+  return { ok: false, pos: prev.pos, timeout: true };
 }
-async function route(name, pts, opts) {
-  const visited = new Set();
-  for (const [x, z] of pts) {
-    const r = await walkTo(x, z, opts);
-    const s = await state(); visited.add(s.area);
-    if (!r.ok) { record(`route:${name}`, false, { failedAt: [x, z], ...r, areas: [...visited] }); return false; }
-  }
-  const s = await state();
-  record(`route:${name}`, true, { end: s.pos, areas: [...visited] });
-  return true;
-}
-async function holdE(ms) { await page.keyboard.down('e'); await sleep(ms); await page.keyboard.up('e'); await sleep(150); }
-async function screenPos(x, y, z) { return page.evaluate(([x, y, z]) => { const g = window.__game; const v = new g.camera.cam.position.constructor(x, y, z).project(g.camera.cam); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight]; }, [x, y, z]); }
-async function luminanceAround(sx, sy, r = 60) {
-  return page.evaluate(([sx, sy, r]) => {
-    const c = document.getElementById('game'); const g = c.getContext('webgl2') || c.getContext('webgl');
-    const dpr = c.width / innerWidth; const px = new Uint8Array(4);
-    let sum = 0, n = 0;
-    for (let dy = -r; dy <= r; dy += 12) for (let dx = -r; dx <= r; dx += 12) {
-      g.readPixels(Math.round((sx + dx) * dpr), Math.round(c.height - (sy + dy) * dpr), 1, 1, g.RGBA, g.UNSIGNED_BYTE, px);
-      sum += 0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]; n++;
-    }
-    return sum / n;
-  }, [sx, sy, r]);
-}
-const want = (n) => !ONLY || ONLY.includes(n);
+async function teleport(x, z) { await page.evaluate(([x, z]) => { const g = window.__game; g.player.setPosition(x, z, Math.PI); g.snapCamera(); }, [x, z]); await sleep(300); }
 
-// ------------------------------------------------------------------ main
 const server = await startServer();
 const browser = await chromium.launch({ headless: !argv.headed, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 try {
@@ -130,226 +75,169 @@ try {
   page = await ctx.newPage();
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e)));
-  const url = server.url + '?fresh=1&capture=1';
+  const url = server.url + '?capture=1';
 
-  // 1 fresh start with the documented flow: load, Start button
+  // 1 load and the start card
   const tLoad = Date.now();
   await page.goto(url);
   await page.waitForFunction(() => window.__game && document.getElementById('loading').classList.contains('hidden'), null, { timeout: 90000 });
   const loadWall = Date.now() - tLoad;
-  await page.click('#btn-start');
-  await sleep(1500);
-  let s = await state();
-  record('fresh-start', errors.length === 0 && s.area === 'park' && s.fire.lit, { loadWallMs: loadWall, loadMs: s.loadMs, area: s.area, errors: errors.slice(0, 3), shot: await shot('01-start', true) });
+  const ui = await page.evaluate(() => ({
+    help: !document.getElementById('help').classList.contains('hidden'),
+    removed: ['inventory', 'stats', 'btn-map', 'shelter-panel', 'goals', 'map-overlay', 'reticle'].filter((id) => document.getElementById(id)),
+    zoomButtons: !!document.querySelector('[data-act="zoomIn"]'),
+  }));
+  record('load-and-start-card', ui.help, { loadWallMs: loadWall, gameLoadMs: (await state()).loadMs });
+  record('no-inventory-or-survival-ui', ui.removed.length === 0 && !ui.zoomButtons, ui);
+  await shot('01-start-card');
+  await page.click('#btn-start'); await sleep(900);
+  await shot('02-start');
 
-  // 2 footprints on snow + ground-ring visible
-  if (want('footprints')) {
-    await page.keyboard.press('Equal'); await page.keyboard.press('Equal'); await sleep(600);
-    const before = (await state()).prints;
-    await setKeys(['s']); await sleep(1600); await setKeys(['d']); await sleep(1200); await setKeys([]); await sleep(500);
-    const after = (await state()).prints;
-    const file = await shot('02-footprints', true);
-    record('footprints', after - before >= 4, { before, after, shot: file });
-    await page.keyboard.press('Minus'); await page.keyboard.press('Minus'); await sleep(400);
+  // 2 the camera is fixed: no rotation keys, no zoom, no orbit while walking
+  if (want('camera')) {
+    const camDir = async () => page.evaluate(() => { const g = window.__game, c = g.camera.cam.position, f = g.camera.focus; return [+(c.x - f.x).toFixed(3), +(c.z - f.z).toFixed(3)]; });
+    const a = await camDir();
+    for (const k of ['z', 'x', 'c', 'q', 'e']) await tap(k);
+    await page.mouse.move(640, 360); await page.mouse.wheel(0, 400); await sleep(300);
+    await setKeys(['d']); await sleep(900); await setKeys(['s']); await sleep(700); await setKeys([]); await sleep(400);
+    const b = await camDir(), s = await state();
+    record('camera-fixed-angle', Math.abs(a[0]) < 0.01 && Math.abs(b[0]) < 0.01 && Math.abs(a[1] - b[1]) < 0.01 && s.cam.yaw === 0, { before: a, after: b, note: 'camera offset from its focus has no x part: it always looks north' });
+    await teleport(-2.4, 13.2);
   }
 
-  // 3 collision: walk into the park wall and into a house front
-  if (want('collision')) {
-    await page.evaluate(() => window.__game.teleport(-49, 20)); await sleep(300);
-    await walkTo(-40, 20, { timeout: 3500, sprint: false });
-    const a = await state();
-    await page.evaluate(() => window.__game.teleport(-11, -6.5)); await sleep(300);
-    await walkTo(-11, -22, { timeout: 3500, sprint: false });
-    const b = await state();
-    record('collision', a.pos[0] < -44.2 && b.pos[1] > -12.4, { wallX: a.pos[0], houseZ: b.pos[1], note: 'teleport used only to set up the test; blocking is from normal movement' });
-    await page.evaluate(() => window.__game.teleport(-60, 16)); await sleep(300);
-  }
-
-  // 3b pathfinding: a zombie behind a house must find its way around to the player on the street
-  if (want('pathing')) {
-    await page.evaluate(() => { const g = window.__game; g.teleport(-11, -5); const z = g.zombies.alive()[0]; z.obj.position.set(-11, 0, -23.5); z.home.set(-11, 0, -23.5); z.state = 'chase'; window.__pathZ = z; });
-    let best = 99, t = 0;
-    while (t < 26000 && best > 2.5) {
-      const d = await page.evaluate(() => { const g = window.__game, z = window.__pathZ; g.noise = 2.5; g.player.stats.health = 100; return z.obj.position.distanceTo(g.player.pos); });
-      best = Math.min(best, d); await sleep(500); t += 500;
-    }
-    record('zombie-pathfinding', best <= 2.5, { closest: +best.toFixed(2), seconds: t / 1000, note: 'zombie placed behind a house; player noise forced so it hunts (test shortcut)' });
-    await page.evaluate(() => { const g = window.__game; g.zombies.resetAll(); g.teleport(-60, 16); });
-    await sleep(300);
-  }
-
-  // 4 woods loop on foot: park west gate -> trail -> woodshed (wood + axe) -> back to shelter
-  if (want('woods')) {
-    await route('park-to-woodshed', [[-70, 13], [-80, 12], [-92, 6], [-100, 4]]);
-    s = await state();
-    const woodBefore = s.inv.wood || 0;
-    await walkTo(-103.4, 4, { tol: 0.8 }); await holdE(2900);
-    s = await state();
-    const woodAfter = s.inv.wood || 0;
-    await walkTo(-101.0, 7.3, { tol: 0.6 }); await sleep(200); await tap('e'); await sleep(300);
+  // 3 movement feel: acceleration, top speed, stopping, idle prints
+  if (want('move')) {
+    await teleport(-6, 12); await sleep(400);
+    const p0 = await state();
+    await setKeys(['w']); await sleep(90);
+    const s1 = await state(); await sleep(1100);
     const s2 = await state();
-    record('gather-wood', woodAfter - woodBefore >= 4, { woodBefore, woodAfter, prompt: s.prompt });
-    record('take-axe', s2.tools.axe === true, { tools: s2.tools });
-    await shot('03-woodshed', true);
-    // chop a dead pine near the trail (needs the axe)
-    await walkTo(-92, 5, { tol: 1.2 });
-    const w0 = (await state()).inv.wood || 0;
-    const rc = await walkTo(-86.7, 0.5, { tol: 0.8 });
-    await holdE(3700);
-    const sc = await state();
-    record('chop-dead-pine', rc.ok && (sc.inv.wood || 0) >= w0 + 4, { woodBefore: w0, woodAfter: sc.inv.wood, prompt: sc.prompt });
-    await shot('03b-chopped', true);
-    await route('woodshed-to-shelter', [[-92, 6], [-80, 12], [-70, 13], [-60, 12]]);
+    await setKeys([]);
+    const tRel = Date.now(); let s3 = await state(), stopMs = null;
+    while (Date.now() - tRel < 1500) { s3 = await state(); if (s3.speed < 0.05) { stopMs = Date.now() - tRel; break; } await sleep(30); }
+    const slide = Math.hypot(s3.pos[0] - s2.pos[0], s3.pos[1] - s2.pos[1]);
+    record('movement-accelerates', s1.speed < s2.speed * 0.75 && s2.speed > 2.2, { speedAt90ms: s1.speed, speedAt1_2s: s2.speed, ground: s2.ground });
+    record('movement-stops-reliably', stopMs !== null && stopMs < 600 && slide < 1.0, { stopMs, slideAfterRelease: +slide.toFixed(2) });
+    record('moves-north-with-w', s2.pos[1] < p0.pos[1] - 2 && Math.abs(s2.pos[0] - p0.pos[0]) < 0.3, { from: p0.pos, to: s2.pos });
+    const c0 = (await state()).prints; await sleep(2000); const c1 = (await state()).prints;
+    record('no-footprints-while-standing', c0 === c1, { before: c0, after: c1 });
+    // collision: push west into the shelter wall for 3 s
+    await teleport(-10, 8); await setKeys(['a']); await sleep(2600);
+    const w1 = await state(); await sleep(500); const w2 = await state(); await setKeys([]);
+    record('collision-shelter-wall', w2.pos[0] > -12.8 && Math.abs(w2.pos[0] - w1.pos[0]) < 0.05, { x: w2.pos[0], wallAt: -13, note: 'pushed west into the low stucco wall' });
+    // turning: reverse direction; the character should slow and turn rather than snap backwards at full speed
+    await teleport(-4, 6); await setKeys(['w']); await sleep(900); await setKeys(['s']); await sleep(120);
+    const t1 = await state(); await sleep(700); const t2 = await state(); await setKeys([]);
+    record('turning-has-weight', t1.speed < 2.2 && Math.abs(Math.atan2(Math.sin(t2.yaw), Math.cos(t2.yaw))) < 0.6, { speedJustAfterReverse: t1.speed, yawAfter: t2.yaw, note: 'yaw 0 faces south (toward the camera)' });
+    await teleport(-2.4, 13.2);
   }
 
-  // 5 store and use: stash deposit, fire fuel, upgrade
-  if (want('shelter')) {
-    await walkTo(-58.4, 8.2, { tol: 0.8 }); await tap('e'); await sleep(400);
-    const before = await state();
-    await page.click('#shelter-panel button[data-act="deposit"]'); await sleep(300);
-    const after = await state();
-    record('stash-deposit', (after.stash.wood || 0) > (before.stash.wood || 0) && !(after.inv.wood), { stashBefore: before.stash, stashAfter: after.stash });
-    await shot('04-stash-panel', true);
-    await page.keyboard.press('Escape'); await sleep(200);
-    await walkTo(-62, 16.4, { tol: 0.8 });
-    const f0 = (await state()).fire.fuel;
-    await tap('e'); await sleep(300);
-    const f1 = (await state()).fire.fuel;
-    record('feed-fire', f1 > f0, { fuelBefore: f0, fuelAfter: f1 });
-  }
-
-  // 6 north loop: street -> police cruiser (pistol) -> pharmacy lot (combat) -> service road -> camp -> woods -> shelter
-  if (want('north')) {
-    await route('shelter-to-cruiser', [[-50, 12], [-46, 1], [-20, 0], [10, 0], [18, -10], [18, -40], [18.6, -54.8]]);
-    await walkTo(18.2, -56.0, { tol: 0.7 }); await holdE(1500);
-    s = await state();
-    record('find-pistol', s.tools.pistol && (s.inv.ammo || 0) >= 4, { tools: s.tools, ammo: s.inv.ammo });
-    await shot('05-police-cruiser', true);
-    // move into the pharmacy lot and fight
-    await walkTo(18, -70, { sprint: false });
-    let kills = 0, shotsFired = 0, tookDamage = false; const hp0 = (await state()).stats.health;
-    for (let k = 0; k < 14 && kills < 2; k++) {
-      s = await state();
-      if (s.dead) break;
-      const zs = s.zombies.filter((z) => Math.hypot(z[0] - s.pos[0], z[1] - s.pos[1]) < 16);
-      if (!zs.length) { await walkTo(18, -78, { sprint: false, timeout: 4000 }); continue; }
-      zs.sort((a, b) => Math.hypot(a[0] - s.pos[0], a[1] - s.pos[1]) - Math.hypot(b[0] - s.pos[0], b[1] - s.pos[1]));
-      const [zx, zz] = zs[0];
-      const [sx, sy] = await screenPos(zx, 1.2, zz);
-      await page.mouse.move(sx, sy);
-      await page.mouse.down({ button: 'right' }); await sleep(1000);
-      const [sx2, sy2] = await screenPos(zx, 1.2, zz); await page.mouse.move(sx2, sy2);
-      if (k === 0) await shot('06-aiming', true);
-      await page.mouse.down({ button: 'left' }); await sleep(60); await page.mouse.up({ button: 'left' }); shotsFired++;
-      await sleep(250);
-      await page.mouse.up({ button: 'right' });
-      const s2 = await state();
-      kills = await page.evaluate(() => window.__game.stats.kills);
-      if (s2.stats.health < hp0) tookDamage = true;
+  // 4 the route: shelter → street → gate (blocked, then opened) → woods → deep trail → house
+  let arrival = null;
+  if (want('route')) {
+    await page.evaluate(() => window.__game.resetRoute(false)); await sleep(500);
+    walked = 0;
+    const W = await page.evaluate(() => window.__game.route.walk);
+    const sections = new Set(); let ok = true, failAt = null, gateBlocked = null;
+    const tWalk = Date.now();
+    for (const [x, z, act] of W) {
+      if (act === 'interact') {
+        const r = await walkTo(x, z, { tol: 1.0 });
+        // before opening: pushing north into the gate must not get through
+        await setKeys(['w']); await sleep(1500); await setKeys([]);
+        const g0 = await state(); gateBlocked = g0.pos[1] > -90 + 0.2 && !g0.gateOpen;
+        await shot('03-gate-closed');
+        await tap('e'); await sleep(1400);
+        const g1 = await state();
+        record('gate-blocks-then-opens', gateBlocked && g1.gateOpen, { zAgainstGate: g0.pos[1], promptWas: g0.prompt, opened: g1.gateOpen });
+        if (!r.ok) { ok = false; failAt = [x, z]; break; }
+        continue;
+      }
+      const r = await walkTo(x, z);
+      const s = await state(); sections.add(s.section);
+      if (s.section === 'street' && !sections.has('_shot2')) { sections.add('_shot2'); await shot('04-street'); }
+      if (s.section === 'woods' && !sections.has('_shot3')) { sections.add('_shot3'); await shot('05-woods'); }
+      if (s.section === 'deep' && !sections.has('_shot4')) { sections.add('_shot4'); await shot('06-deep-trail'); }
+      if (s.section === 'house' && !sections.has('_shot5')) { sections.add('_shot5'); await shot('07-house-approach'); }
+      if (!r.ok) { ok = false; failAt = [x, z, r]; break; }
+      if (s.arrived) break;
     }
-    s = await state();
-    record('combat', kills >= 1 && !s.dead, { kills, shotsFired, ammoLeft: s.inv.ammo, health: s.stats.health, tookDamage });
-    await shot('07-after-fight', true);
-    // search pharmacy aisles (medkits) and heal if hurt
-    const r = await walkTo(16, -86.8, { tol: 0.9, sprint: false });
-    if (r.ok) { await holdE(3100); }
-    s = await state();
-    const hpBefore = s.stats.health;
-    if ((s.inv.medkit || 0) > 0 && hpBefore < 100) { await tap('2'); await sleep(200); }
-    const s3 = await state();
-    record('pharmacy-loot', (s.inv.medkit || 0) >= 1 || (s.inv.food || 0) >= 1, { inv: s.inv, healedFrom: hpBefore, healedTo: s3.stats.health });
-    await route('pharmacy-to-camp-to-woods-to-shelter', [[13, -73], [3, -73], [-20, -78], [-38, -76], [-60, -78], [-86, -78], [-94, -60], [-102, -36], [-104, -12], [-92, 6], [-80, 12], [-66, 14]]);
+    await sleep(2800);
+    arrival = await state();
+    const wall = (Date.now() - tWalk) / 1000;
+    record('route-walkable-to-house', ok && arrival.arrived, { failAt, sections: [...sections].filter((x) => !x.startsWith('_')), walkTime: arrival.walkTime, wallSeconds: +wall.toFixed(0), routeLength: arrival.routeLength, walkedMeters: +walked.toFixed(0) });
+    const endVisible = await page.evaluate(() => !document.getElementById('endcard').classList.contains('hidden') && document.getElementById('end-time').textContent);
+    record('end-of-slice-card', !!endVisible, { shownTime: endVisible });
+    await shot('08-end-card');
+    // footprints: count per distance, spacing and floating
+    const pr = await page.evaluate(() => window.__game.printsSample(60));
+    const maxFloat = Math.max(...pr.map((p) => Math.abs(p[1])));
+    const gaps = []; for (let i = 2; i < pr.length; i++) gaps.push(Math.hypot(pr[i][0] - pr[i - 2][0], pr[i][2] - pr[i - 2][2]));
+    const gait = arrival.gait;
+    const maxStride = gait.Run.cycle / 2;
+    record('footprints-follow-steps', arrival.prints > walked / (maxStride * 1.25) && maxFloat < 0.06 && Math.max(...gaps) < maxStride * 2 * 1.3 + 0.3,
+      { prints: arrival.prints, walkedMeters: +walked.toFixed(0), metersPerPrint: +(walked / arrival.prints).toFixed(2), walkClip: gait.Walk, runClip: gait.Run, maxHeightAboveGround: maxFloat, maxSameFootGap: +Math.max(...gaps).toFixed(2), pool: 700 });
+    // restart from the end card
+    await page.click('#btn-again'); await sleep(1500);
+    const rs = await state();
+    record('restart-resets-route', Math.hypot(rs.pos[0] + 2.4, rs.pos[1] - 13.2) < 0.2 && !rs.gateOpen && !rs.arrived && rs.prints === 0 && rs.walkTime === 0 && !rs.modal, { pos: rs.pos, gateOpen: rs.gateOpen, prints: rs.prints, modal: rs.modal });
   }
 
-  // 7 south loop: park south gate -> canal walk -> Hibiscus -> Coral Palm Dr -> beach -> back west
-  if (want('south')) {
-    await page.evaluate(() => { const g = window.__game; if (g.player.dead) return; }); // (no shortcuts)
-    await route('shelter-to-canal', [[-61, 26], [-61, 32], [-52, 40], [-36, 50], [-24, 56], [0, 56.5], [30, 56.5]]);
-    await shot('08-canal', true);
-    await route('canal-to-beach', [[60, 56.5], [96, 56.5], [106, 52], [112, 40], [113, 10], [113, 2], [124, 0]]);
-    await shot('09-beach', true);
-    await walkTo(128, 4.8, { tol: 1.0 }); await holdE(2200);
-    s = await state();
-    record('driftwood', (s.inv.wood || 0) >= 1, { wood: s.inv.wood });
-    await route('beach-to-shelter', [[113, 1.4], [108, 1.4], [80, 0], [40, 0], [0, 0], [-40, 0], [-46, 1], [-52, 10], [-60, 16]]);
-    s = await state();
-    record('areas-visited', s.areas.length >= 7, { areas: s.areas });
+  // 5 route boundaries in the woods and deep trail: push sideways, stay inside the corridor
+  if (want('bounds')) {
+    const out = [];
+    for (const [x, z] of [[-14, -122], [4, -170], [-12, -242]]) {
+      for (const k of ['a', 'd']) {
+        await teleport(x, z); await setKeys([k]); await sleep(3500); await setKeys([]);
+        const s = await state(); out.push({ at: [x, z], key: k, lat: s.lat, w: s.w, pos: s.pos });
+      }
+    }
+    record('route-boundaries-hold', out.every((o) => o.lat <= o.w + 0.05), { samples: out.map((o) => `${o.key}@${o.at}: lat ${o.lat}/${o.w}`) });
+    await teleport(-12, -120); await sleep(600); await shot('09-woods-boundary');
   }
 
-  // 8 day / night / lantern / camera
-  if (want('night')) {
-    await page.evaluate(() => window.__game.teleport(-58, 22)); await sleep(300);
-    const day = await shot('10-day', true);
-    const [px, py] = await screenPos(-58, 0.5, 22);
-    const lumDay = await luminanceAround(px, py);
-    await tap('n'); await sleep(1500);
-    s = await state();
-    const nightOn = s.night;
-    await page.evaluate(() => window.__game.teleport(-50, 34)); await sleep(500);
-    const [qx, qy] = await screenPos(-50, 0.5, 34);
-    const lumNightOff = await luminanceAround(qx, qy);
-    await tap('l'); await sleep(700);
-    const lumNightOn = await luminanceAround(qx, qy);
-    s = await state();
-    const night = await shot('11-night-lantern', true);
-    record('day-night-lantern', nightOn && s.lanternOn && lumNightOn > lumNightOff + 4 && lumDay > lumNightOff, { lumDay: +lumDay.toFixed(1), lumNightOff: +lumNightOff.toFixed(1), lumNightOn: +lumNightOn.toFixed(1), day, night });
-    const c0 = (await state()).cam;
-    await page.mouse.move(640, 360); await page.mouse.wheel(0, 300); await sleep(500);
-    const c1 = (await state()).cam;
-    await tap('x'); await sleep(700); const c2 = (await state()).cam;
-    await shot('12-camera-high-rotated', true);
-    await tap('z'); await page.mouse.wheel(0, -300); await sleep(500);
-    record('camera-controls', c1.level > c0.level && c2.yaw !== c1.yaw, { c0, c1, c2 });
-    await tap('l'); await tap('n'); await sleep(500);
-  }
-
-  // 9 failure and recovery: drop the pack on death, wake at the shelter
-  if (want('recovery')) {
-    await page.evaluate(() => { const g = window.__game; g.teleport(10, 1); g.inv.add('food', 1); });
-    await sleep(300);
-    await page.evaluate(() => window.__game.player.hurt(999));  // test shortcut: simulate a fatal hit
-    await sleep(5200);
-    s = await state();
-    const pack = await page.evaluate(() => window.__game.interact.list.some((i) => i.kind === 'pack' && !i.used));
-    record('death-recovery', !s.dead && s.area === 'park' && pack && s.stats.health > 0, { pos: s.pos, pack, hp: s.stats.health, note: 'death triggered with player.hurt(999) as a test shortcut' });
-    await shot('13-wake-at-shelter', true);
-    await route('recover-pack', [[-52, 10], [-46, 1], [-10, 0], [9.5, 1]]);
-    await holdE(1300);
-    s = await state();
-    record('pack-recovered', (s.inv.food || 0) >= 1, { inv: s.inv });
-  }
-
-  // 10 performance sample (real browser GPU in this run)
-  s = await state();
-  record('self-defense-during-travel', true, { encounters: defended, note: 'times the walker had to shoot or swing at a chasing zombie while travelling' });
-  record('performance', s.fps >= 20, { fps: s.fps, worstFrameMs: s.worstFrame, loadMs: s.loadMs, note: 'fps sampled at the end of the desktop run' });
+  // 6 performance on desktop GPU (headless Chromium)
+  const perf = await state();
+  record('performance-desktop', perf.fps >= 45, { fps: perf.fps, worstFrameMs: perf.worstFrame, note: 'desktop GPU; screenshots cause some of the worst-frame spikes' });
   record('no-console-errors', errors.length === 0, { errors: errors.slice(0, 5) });
 
-  // 11 touch-sized layout (simulated phone viewport, not a real device)
+  // 7 emulated portrait phone: touch joystick, buttons, no page scroll (not a physical phone)
   if (want('touch')) {
     const m = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     const p2 = await m.newPage(); const errs2 = [];
     p2.on('pageerror', (e) => errs2.push(String(e)));
-    await p2.goto(server.url + '?fresh=1&capture=1');
+    await p2.goto(server.url + '?capture=1');
     await p2.waitForFunction(() => window.__game && document.getElementById('loading').classList.contains('hidden'), null, { timeout: 90000 });
     await p2.tap('#btn-start'); await sleep(800);
     const before = await p2.evaluate(() => window.__game.state().pos);
-    const joy = await p2.locator('#joy').boundingBox();
-    const cx = joy.x + joy.width / 2, cy = joy.y + joy.height / 2;
-    // drag the joystick with pointer events
-    await p2.evaluate(([cx, cy]) => {
-      const el = document.getElementById('joy');
-      const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 7, clientX: x, clientY: y, bubbles: true, pointerType: 'touch' }));
-      ev('pointerdown', cx, cy); ev('pointermove', cx + 40, cy - 30);
-      window.__joyEnd = () => ev('pointerup', cx, cy);
-    }, [cx, cy]);
-    await sleep(1600);
+    // thumb down low on the left side (floating stick), drag up
+    await p2.evaluate(() => {
+      const el = document.getElementById('joy-zone');
+      const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 7, clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true }));
+      ev('pointerdown', 110, 690); ev('pointermove', 112, 630);
+      window.__joyEnd = () => ev('pointerup', 112, 630);
+    });
+    await sleep(1800);
+    const mid = await p2.screenshot({ path: path.join(SHOTS, '10-touch-walking.png') });
     await p2.evaluate(() => window.__joyEnd());
+    await sleep(600);
     const after = await p2.evaluate(() => window.__game.state().pos);
+    // try to scroll / zoom the page with touch gestures
+    await p2.touchscreen.tap(200, 300);
+    await p2.mouse.wheel(0, 600);
+    const scroll = await p2.evaluate(() => ({ y: scrollY, top: document.scrollingElement.scrollTop, scale: visualViewport?.scale ?? 1 }));
     const touchVisible = await p2.evaluate(() => !document.getElementById('touch').classList.contains('hidden'));
-    await p2.screenshot({ path: path.join(SHOTS, '14-touch-layout.png') });
-    record('touch-controls', touchVisible && Math.hypot(after[0] - before[0], after[1] - before[1]) > 1 && errs2.length === 0,
-      { moved: +Math.hypot(after[0] - before[0], after[1] - before[1]).toFixed(2), touchVisible, errors: errs2.slice(0, 3), note: 'simulated 390x844 touch viewport in Chromium, not a physical phone' });
+    const moved = Math.hypot(after[0] - before[0], after[1] - before[1]);
+    record('touch-joystick-walks-north', touchVisible && moved > 2 && after[1] < before[1] && errs2.length === 0, { moved: +moved.toFixed(2), dz: +(after[1] - before[1]).toFixed(2), note: 'emulated 390x844 touch viewport in Chromium, not a physical phone' });
+    record('no-page-scroll-or-zoom', scroll.y === 0 && scroll.top === 0 && scroll.scale === 1, scroll);
+    // the E button lights up at the gate
+    await p2.evaluate(() => { const g = window.__game; g.player.setPosition(3, -87.4, Math.PI); g.snapCamera(); });
+    await sleep(700);
+    const ready = await p2.evaluate(() => document.querySelector('#touch [data-act="interact"]').classList.contains('ready'));
+    await p2.tap('#touch [data-act="interact"]'); await sleep(900);
+    const opened = await p2.evaluate(() => window.__game.state().gateOpen);
+    await p2.screenshot({ path: path.join(SHOTS, '11-touch-gate.png') });
+    record('touch-interact-button', ready && opened, { eButtonLit: ready, gateOpened: opened });
     await m.close();
   }
 } catch (e) {

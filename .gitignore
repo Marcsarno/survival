@@ -3,3 +3,4 @@ dist/
 *.blend1
 playtest-output/
 .vercel
+.env*

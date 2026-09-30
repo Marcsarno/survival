@@ -1,6 +1,6 @@
 # Current state
 
-Last updated 2026-09-30, after the overnight build. The latest playtest passed 29 of 29 checks.
+Last updated 2026-09-30. Live at **https://sarno-survive.vercel.app**. The latest playtest passed 30 of 30 checks, both locally and against the live site.
 
 ## What works (verified by the playtest; see PLAYTEST.md)
 
@@ -43,10 +43,21 @@ Last updated 2026-09-30, after the overnight build. The latest playtest passed 2
 ## Next steps (suggested)
 
 1. Play it on a phone and tune `quality=low`: shadows, pixel ratio, draw distance.
-2. Deploy `dist/` to Vercel under the **marc731@gmail.com** account (the CLI is logged in) to get a link to text.
-3. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
-4. More set dressing to match the concept density: arched entries, awnings, more yard props.
+2. Vision items deliberately left out of this build: the daughter-rescue opening, family characters at the shelter, dialogue and choices.
+3. More set dressing to match the concept density: arched entries, awnings, more yard props.
+4. Optional: connect the GitHub repo to the Vercel project so each push deploys automatically. Today deploys are manual.
+
+## Deployment
+
+- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. The live URL is <https://sarno-survive.vercel.app>.
+- **Linking:** `.vercel/project.json` links this folder to the project. It is gitignored, so a fresh clone needs `npx vercel link --yes --project sarno-survive --scope marcsarno` once.
+- **Redeploy:** run `npx vercel whoami` first; it should print `marc731-6361`. Then run `npm run deploy`. Vercel builds using `vercel.json` (`npm run build`, output in `dist/`). `.vercelignore` keeps the Blender and source-asset folders out of the upload; its patterns are anchored with a leading `/`, because a bare `assets/` would also drop `public/assets/`.
+- **Verify live:** `node tools/playtest.mjs --url=https://sarno-survive.vercel.app/`
+
+## Starting a new chat
+
+Open this folder in Claude Code and say something like: "Read CLAUDE.md and docs/STATE.md, then let's improve X." Everything needed to continue is in the repo and in this file. Before any Vercel command, confirm the account is marc731, not hornerxpress.
 
 ## How to continue
 
-Read `README.md`, then `docs/DESIGN.md`. Then run `npm run dev`, followed by `npm run playtest`, after any change.
+Read `README.md`, then `docs/DESIGN.md`. Run `npm run dev` while working. After any change, run `npm run playtest`, then `npm run deploy` when it passes.

@@ -32,6 +32,7 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 | Low cinematic camera | **C** | — |
 | Skip to night / morning | **N** | — |
 | Map · Help / pause | **M** · **H** or **Esc** | 🗺 · ? |
+| Sound on / off | 🔊 button | 🔊 |
 
 ## Features
 

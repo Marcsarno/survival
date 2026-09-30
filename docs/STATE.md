@@ -1,6 +1,6 @@
 # Current state
 
-Last updated 2026-09-30, after the overnight build.
+Last updated 2026-09-30, after the overnight build. The latest playtest passed 29 of 29 checks.
 
 ## What works (verified by the playtest; see PLAYTEST.md)
 
@@ -8,6 +8,7 @@ Last updated 2026-09-30, after the overnight build.
 - **Resource loop:** gather or search, carry within pack limits, store in the stash, burn wood in the fire, and build 4 shelter upgrades.
 - **Survival:**
   - Warmth, health, stamina and lantern oil.
+  - Hunger drains over a day; food refills it.
   - Death drops your pack, and you can recover it.
   - Sleeping or resting passes time.
 - **Combat:** the frozen hunt by sight, noise and lantern light. Aiming is forgiving and ammo is scarce; axe and shove work at close range.

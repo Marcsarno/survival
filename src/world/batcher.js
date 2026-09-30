@@ -14,9 +14,14 @@ export function stdMat(color, opts = {}) {
   const key = color + JSON.stringify(opts, (k, v) => (v && v.isTexture ? v.uuid : v));
   if (matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0, flatShading: true, ...opts });
+  // plain colored materials get baked into vertex colors and share one material (far fewer draw calls)
+  m.userData.bake = Object.keys(opts).every((k) => k === 'roughness');
   matCache.set(key, m);
   return m;
 }
+
+const BAKED = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, flatShading: true });
+BAKED.name = 'bakedVertexColor';
 
 export class Batcher {
   constructor(scene, chunk = 48) { this.scene = scene; this.chunk = chunk; this.buckets = new Map(); }
@@ -25,6 +30,12 @@ export class Batcher {
   add(geo, mat, matrix, opts = {}) {
     const g = (geo.index ? geo.toNonIndexed() : geo.clone()).applyMatrix4(matrix);
     for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (mat.userData.bake) {
+      const n = g.attributes.position.count, c = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { c[i * 3] = mat.color.r; c[i * 3 + 1] = mat.color.g; c[i * 3 + 2] = mat.color.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+      mat = BAKED;
+    }
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
     if (!g.attributes.normal) g.computeVertexNormals();
     g.computeBoundingBox();

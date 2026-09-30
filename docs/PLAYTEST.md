@@ -2,7 +2,7 @@
 
 - **Last full run:** 2026-09-30, against a fresh clone of `github.com/Marcsarno/survival`, built with `npm install && npm run build` and served with `vite preview`.
 - **Harness:** `tools/playtest.mjs`, Playwright Chromium with the GPU (ANGLE/D3D11), 1280×720, Windows 11.
-- **Result:** 28 passed, 0 failed. The raw JSON is written to `playtest-output/results.json`; screenshots go to `docs/screenshots/`.
+- **Result:** 29 passed, 0 failed (the zombie pathfinding check was added later). The raw JSON is written to `playtest-output/results.json`; screenshots go to `docs/screenshots/`.
 
 All movement, gathering, searching, combat and UI actions went through real keyboard, mouse and pointer input. Two test shortcuts were used, and both are labelled in the results:
 1. Teleports that only place the player next to a wall for the collision test.
@@ -65,4 +65,14 @@ The anchor list is in `DESIGN.md`. Screenshots are in `docs/screenshots/`.
 
 - **Desktop** (this machine, Chromium with the GPU): 60 fps capped, about 600–800 draw calls and about 500k triangles including the shadow pass. Frame-time spikes of about 110 ms showed up during automated runs; they coincide with Playwright screenshot capture, but the cause isn't confirmed.
 - **Download:** 3.8 MB of meshopt-compressed models plus 218 KB of gzipped JavaScript.
-- **Phones:** not measured on a real device. Phones get `quality=low` automatically: 1.25× pixel ratio, 1024 px shadows, half the snow particles, no antialiasing.
+- **Phones:** not measured on a real device. Phones get  automatically: 1.25× pixel ratio, 1024 px shadows, half the snow particles, no antialiasing.
+- **Phone approximation** (): a 390×844 touch viewport at 3× device scale, with the CPU throttled 4× through Chrome DevTools, on this PC's GPU. This approximates a mid-range phone's CPU, not its GPU.
+
+  | Change | Frame rate | Draw calls |
+  |---|---|---|
+  | Before optimizing | 28–33 fps | 500–850 |
+  | Plain materials baked into vertex colors | 30–33 fps | 440–570 |
+  | Characters and animals beyond 55 m not drawn or animated | 43–54 fps | 280–370 |
+  | Character meshes joined, one material each, in Blender | **58–60 fps** | 200–330 |
+
+  Load time under the 4× CPU throttle was 5.7–6 s (local server).

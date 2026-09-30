@@ -50,7 +50,10 @@ export class Zombies {
     this.flow.update(dt, p);
     const safeZone = g.shelter.upgrades.post;
     for (const z of this.list) {
-      z.mixer.update(dt);
+      // far away: skip drawing and animating (AI still runs)
+      const far = z.obj.position.distanceTo(p) > 55;
+      z.obj.visible = !far && !(z.dead && z.deadT > 12);
+      if (!far) z.mixer.update(dt);
       if (z.dead) {
         z.deadT += dt;
         if (z.deadT > 6) z.obj.position.y -= dt * 0.25; // sink into the snow

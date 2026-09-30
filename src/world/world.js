@@ -417,7 +417,7 @@ export function buildWorld(scene, assets, col) {
     for (const [x, z] of [[-112, -20], [-96, -52], [-126, -70], [-110, 10], [-90, -30]]) animalSpawns.push({ kind: 'deer', x, z });
     for (const [x, z] of [[-98, -70], [-84, 20]]) animalSpawns.push({ kind: 'fox', x, z });
     for (const [x, z] of [[-90, -10], [-104, -40], [-70, 24], [-60, 36], [-116, -12]]) animalSpawns.push({ kind: 'rabbit', x, z });
-    animalSpawns.push({ kind: 'owl', x: -93.5, z: -16.5, perch: 3.2 });
+    animalSpawns.push({ kind: 'owl', x: -106.3, z: 4.4, perch: 2.95 }); // on the woodshed roof
     for (const [x, z] of [[-136, -100], [-130, -110]]) animalSpawns.push({ kind: 'wolf', x, z, night: true });
     for (const [x, z] of [[-112, -64], [-126, -12], [-96, -90]]) zombieSpawns.push({ x, z, area: 'woods', night: true });
     addI({ kind: 'note', x: -94, z: -58, r: 2.0, label: 'Look at tracks', text: 'Deer tracks cross the trail here — and a line of dragging bootprints that never stops to rest. The frozen walk these woods at night.' });

@@ -448,6 +448,35 @@ def static_prop(src, name, target, measure="height", snow_thresh=None, tex=None)
 KEEP_CHAR = {"Death", "Gun_Shoot", "HitRecieve", "Idle", "Idle_Gun_Pointing", "Interact", "Punch_Left", "Punch_Right", "Run", "Sword_Slash", "Walk"}
 KEEP_ANIMAL = {"Idle", "Idle_2", "Idle_2_HeadLow", "Walk", "Gallop", "Eating", "Attack", "Death"}
 
+def bake_and_join(objs, name):
+    """Bake every material's base color into a vertex color layer, use one shared material,
+    and join all skinned meshes: one draw call per character instead of one per material."""
+    meshes = [o for o in objs if o.type == "MESH"]
+    if not meshes: return
+    vc = bpy.data.materials.new(name + "_VC")
+    try: vc.use_nodes = True
+    except Exception: pass
+    nt = vc.node_tree; bsdf = nt.nodes.get("Principled BSDF")
+    node = nt.nodes.new("ShaderNodeVertexColor"); node.layer_name = "Col"
+    nt.links.new(node.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.9
+    for ob in meshes:
+        me = ob.data
+        attr = me.color_attributes.new(name="Col", type="FLOAT_COLOR", domain="CORNER")
+        for p in me.polygons:
+            m = me.materials[p.material_index] if len(me.materials) else None
+            col = (0.8, 0.8, 0.8, 1.0)
+            if m is not None and m.node_tree:
+                b = m.node_tree.nodes.get("Principled BSDF")
+                if b: col = tuple(b.inputs["Base Color"].default_value)
+            for li in p.loop_indices: attr.data[li].color = col
+        me.materials.clear(); me.materials.append(vc)
+    bpy.ops.object.select_all(action="DESELECT")
+    for ob in meshes: ob.select_set(True)
+    bpy.context.view_layer.objects.active = meshes[0]
+    if len(meshes) > 1: bpy.ops.object.join()
+    print(f"@@ baked+joined {len(meshes)} meshes for {name}")
+
 def prune_actions(keep):
     """Drop animations the game never plays (and duplicate unprefixed copies) to shrink downloads."""
     for a in list(bpy.data.actions):
@@ -484,6 +513,8 @@ def character(src, name, remove=(), recolor=None, per_mesh=None, sleeves=None):
                     p.material_index = ji; n += 1
             print(f"@@ sleeves: {n} faces recolored on {o.name}")
     prune_actions(KEEP_CHAR)
+    bake_and_join(objs, name)
+    objs = [o for o in bpy.context.scene.objects]
     roots = [o for o in objs if o.parent is None]
     export(roots, name, anim=True)
 
@@ -491,7 +522,8 @@ def passthrough_rig(src, name):
     reset()
     objs = import_glb(src)
     prune_actions(KEEP_ANIMAL)
-    export([o for o in objs if o.parent is None], name, anim=True)
+    bake_and_join(objs, name)
+    export([o for o in bpy.context.scene.objects if o.parent is None], name, anim=True)
 
 # ---------------------------------------------------------------- build list
 JOBS = []

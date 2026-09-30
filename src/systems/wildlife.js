@@ -48,12 +48,14 @@ export class Wildlife {
   update(dt) {
     const g = this.game, p = g.player.pos, night = g.daynight.nightness;
     for (const a of this.list) {
-      a.mixer?.update(dt);
       const o = a.obj.position;
       const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
+      const far = d > 55;
+      a.obj.visible = !far;
+      if (!far) a.mixer?.update(dt);
       a.t -= dt;
-      if (a.kind === 'owl') { a.obj.visible = night > 0.3; a.obj.rotation.y = Math.sin(performance.now() * 0.0005) * 1.2; continue; }
-      if (a.kind === 'wolf') a.obj.visible = night > 0.4;
+      if (a.kind === 'owl') { a.obj.visible = !far && night > 0.3; a.obj.rotation.y = Math.sin(performance.now() * 0.0005) * 1.2; continue; }
+      if (a.kind === 'wolf') a.obj.visible = !far && night > 0.4;
       if (a.kind === 'dog' && a.friend) { this.updateDog(a, dt, d); continue; }
       if (a.kind === 'dog' && a.stray) { a.obj.rotation.y = Math.atan2(-dx, -dz); if (d < 6) this.play(a, 'Idle_2_HeadLow'); else this.play(a, 'Idle_2'); continue; }
 

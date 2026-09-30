@@ -27,6 +27,7 @@ This is the shared record of material decisions for the prototype. The user's vi
 
 - **Three.js + Vite, plain ES modules.** The goal is instant browser delivery to friends via a texted link.
 - **One continuous map, about 300 × 250 m, with no loading screens.** Areas are named polygons, and a banner appears on entry.
+- **Characters and animals are baked in Blender:** material colors go into vertex colors and the meshes are joined, one draw call each. Anything beyond 55 m is neither drawn nor animated.
 - **Draw calls are kept low.** Procedural buildings merge into one mesh per material per 48 m chunk. Repeated models (trees, shrubs, rocks) are GPU-instanced. The full world is about 600–800 draw calls and 500k triangles, including the shadow pass. Desktop holds 60 fps.
 - **Terrain** is a 3 m faceted triangle grid. `groundHeight()` interpolates the exact triangle that is drawn, so feet and footprints match the surface. Snow is pulled down under pavement.
 - **Collision** is 2D on the ground plane: circles and rotated boxes in a spatial hash. Low walls are flagged so they don't block line of sight.

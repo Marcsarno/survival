@@ -8,7 +8,7 @@ export const CAM_LEVELS = [9, 12, 15, 19, 24, 30];
 export class FollowCamera {
   constructor(aspect) {
     this.cam = new THREE.PerspectiveCamera(38, aspect, 0.5, 400);
-    this.level = 3; this.height = CAM_LEVELS[this.level];
+    this.level = aspect < 0.8 ? 3 : 2; this.height = CAM_LEVELS[this.level];
     this.yaw = Math.PI / 4; this.targetYaw = this.yaw;
     this.focus = new THREE.Vector3();
     this.shake = 0;

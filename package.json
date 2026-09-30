@@ -6,9 +6,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "assets": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" --background --factory-startup --python blender/build_assets.py",
+    "assets": "\"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe\" --background --factory-startup --python blender/build_assets.py && node tools/optimize-models.mjs",
     "fetch-assets": "node tools/fetch-assets.mjs",
-    "playtest": "node tools/playtest.mjs"
+    "playtest": "node tools/playtest.mjs",
+    "optimize": "node tools/optimize-models.mjs"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1",
     "playwright": "^1.63.0",
     "vite": "^8.3.1"
   },

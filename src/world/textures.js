@@ -81,17 +81,28 @@ export function roofTexture(seed, snow = 0.6) {
       }
       g.fillStyle = 'rgba(60,20,10,0.35)'; g.fillRect(0, r * rh + rh - 3, w, 3);
     }
-    // snow: heavier toward the top (v = 1 is ridge; canvas y=0 is top of texture)
-    const n = Math.floor(120 * snow);
-    for (let i = 0; i < n; i++) {
-      const y = Math.pow(rng(), 1.6 - snow) * h; // bias toward ridge
-      const x = rng() * w, r = 26 + rng() * 64 * (1.3 - y / h);
-      for (const ox of [0, w, -w]) {
-        const s = mulberry32((seed * 97 + i) | 0);
-        g.fillStyle = 'rgba(150,165,195,0.55)'; facetPoly(g, s, x + ox + 3, y + 4, r, 7, 0.7); g.fill();
-        const s2 = mulberry32((seed * 97 + i) | 0);
-        g.fillStyle = PAL.snow; facetPoly(g, s2, x + ox, y, r, 7, 0.7); g.fill();
-      }
+    // snow blanket: solid cover from the ridge (canvas top) down to a jagged, faceted edge,
+    // a few tiles poking through, loose clumps below the edge, bare tile at the eaves (concept 05/11)
+    const edgeY = h * (0.5 + 0.25 * snow);
+    const pts = [[0, 0], [w, 0]];
+    for (let x = w; x >= 0; x -= w / 18) pts.push([x, edgeY + (rng() - 0.5) * h * 0.22 + (x === w || x === 0 ? 0 : 0)]);
+    pts[pts.length - 1][1] = pts[2][1]; // seamless wrap across the u repeat
+    g.fillStyle = 'rgba(140,156,190,0.6)';
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y + 6) : g.moveTo(x, y))); g.closePath(); g.fill();
+    g.fillStyle = PAL.snow;
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.closePath(); g.fill();
+    // subtle facet shading inside the blanket
+    for (let i = 0; i < 26; i++) { g.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.5)' : 'rgba(190,200,222,0.35)'; facetPoly(g, rng, rng() * w, rng() * edgeY * 0.9, 20 + rng() * 50, 5, 0.6); g.fill(); }
+    // tiles showing through
+    for (let i = 0; i < 7; i++) {
+      const x = rng() * w, y = rng() * edgeY * 0.8, rr = 8 + rng() * 16;
+      g.fillStyle = PAL.tile; facetPoly(g, rng, x, y, rr, 5, 0.6); g.fill();
+    }
+    // loose clumps below the edge
+    for (let i = 0; i < 18; i++) {
+      const x = rng() * w, y = edgeY + rng() * (h - edgeY) * 0.8, rr = 8 + rng() * 22;
+      g.fillStyle = 'rgba(140,156,190,0.55)'; facetPoly(g, mulberry32(seed + i), x + 2, y + 3, rr, 6, 0.7); g.fill();
+      g.fillStyle = PAL.snow; facetPoly(g, mulberry32(seed + i), x, y, rr, 6, 0.7); g.fill();
     }
   });
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 // Loads every GLB once. Static models are later instanced; rigged ones are cloned with SkeletonUtils.
 export const MODEL_LIST = [
@@ -9,11 +10,11 @@ export const MODEL_LIST = [
   'rock-1', 'rock-2', 'rock-3', 'snow-mound-1', 'snow-mound-2', 'lantern', 'car-sedan', 'car-suv',
   'stump', 'fallen-log', 'wood-bundle', 'campfire', 'axe', 'pistol', 'medkit', 'food-can', 'matchbox',
   'water-bottle', 'backpack', 'rabbit', 'duck', 'owl',
-  'player', 'zombie-a', 'zombie-b', 'survivor', 'deer', 'fox', 'wolf', 'dog',
+  'player', 'zombie-a', 'zombie-b', 'deer', 'fox', 'wolf', 'dog',
 ];
 
 export class Assets {
-  constructor() { this.models = {}; this.loader = new GLTFLoader(); }
+  constructor() { this.models = {}; this.loader = new GLTFLoader(); this.loader.setMeshoptDecoder(MeshoptDecoder); }
 
   async loadAll(onProgress) {
     let done = 0;

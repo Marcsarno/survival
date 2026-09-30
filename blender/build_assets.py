@@ -382,6 +382,16 @@ def static_prop(src, name, target, measure="height", snow_thresh=None, tex=None)
                 img.scale(tex, tex); img.pack()
     export([ob], name)
 
+KEEP_CHAR = {"Death", "Gun_Shoot", "HitRecieve", "Idle", "Idle_Gun_Pointing", "Interact", "Punch_Left", "Punch_Right", "Run", "Sword_Slash", "Walk"}
+KEEP_ANIMAL = {"Idle", "Idle_2", "Idle_2_HeadLow", "Walk", "Gallop", "Eating", "Attack", "Death"}
+
+def prune_actions(keep):
+    """Drop animations the game never plays (and duplicate unprefixed copies) to shrink downloads."""
+    for a in list(bpy.data.actions):
+        short = a.name.split("|")[-1]
+        if "|" not in a.name or short not in keep:
+            bpy.data.actions.remove(a)
+
 def character(src, name, remove=(), recolor=None, per_mesh=None, sleeves=None):
     """Re-export a rigged character with material edits. recolor: {material: hex};
     per_mesh: {mesh_substring: {material: (new_name, hex)}}; sleeves: (mesh_substring, max_abs_x, new_mat)."""
@@ -410,12 +420,14 @@ def character(src, name, remove=(), recolor=None, per_mesh=None, sleeves=None):
                 if p.material_index in skin_idx and abs((o.matrix_world @ p.center).x) < sleeves[1]:
                     p.material_index = ji; n += 1
             print(f"@@ sleeves: {n} faces recolored on {o.name}")
+    prune_actions(KEEP_CHAR)
     roots = [o for o in objs if o.parent is None]
     export(roots, name, anim=True)
 
 def passthrough_rig(src, name):
     reset()
     objs = import_glb(src)
+    prune_actions(KEEP_ANIMAL)
     export([o for o in objs if o.parent is None], name, anim=True)
 
 # ---------------------------------------------------------------- build list
@@ -480,9 +492,7 @@ JOBS.append(("zombie-b", lambda: character(
     "hooded-adventurer.glb", "zombie-b", remove=("Sword",),
     recolor={"Skin": PAL["zskin"], "White": "#6b6660", "DarkBrown": "#3d3530", "LightBrown": "#5a4a3e",
              "Metal": "#4a4a48", "Metal_Dark": "#333331", "Gold": "#4d4538", "Brown": "#2e2824", "Black": "#1f1f22"})))
-JOBS.append(("survivor", lambda: character(
-    "hooded-adventurer.glb", "survivor", remove=("Sword",),
-    recolor={"White": "#8a6f4e", "DarkBrown": "#4a3a2c", "Metal": "#5d4a38", "Metal_Dark": "#3b3028"})))
+# (a brown-hooded "survivor" recolor lived here; unused for now — see assets/source/survivor-built.glb)
 for a in ("deer", "fox", "wolf", "dog"):
     JOBS.append((a, (lambda a=a: passthrough_rig(a + ".glb", a))))
 

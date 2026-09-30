@@ -27,7 +27,7 @@ export class Zombies {
     const z = {
       obj, mixer, actions, spawn: s, home: new THREE.Vector3(s.x, 0, s.z), hp: 3, state: 'wander', t: Math.random() * 3,
       yaw: Math.random() * 6, target: null, attackT: 0, stagger: 0, dead: false, deadT: 0, current: null, step: 0, side: 1, groanT: 2 + Math.random() * 6,
-      armL: root.getObjectByName('UpperArmL'), armR: root.getObjectByName('UpperArmR'), idx: i,
+      arms: ['L', 'R'].map((k) => [root.getObjectByName('UpperArm' + k), root.getObjectByName('LowerArm' + k), root.getObjectByName('Wrist' + k), k === 'L' ? 1 : -1]), idx: i,
     };
     this.play(z, 'Walk', 0.5);
     this.list.push(z);
@@ -116,7 +116,7 @@ export class Zombies {
       if (z.state !== 'attack' && z.stagger <= 0) this.play(z, speed > 0 ? 'Walk' : 'Idle', speed > 0 ? clamp(speed / 2.2, 0.35, 0.9) : 0.6);
       z.obj.rotation.y = z.yaw;
       // reaching arms: bend upper arms forward after the animation pose
-      if (z.armL && z.state !== 'attack') { z.armL.rotation.x -= 0.9; z.armR.rotation.x -= 0.9; }
+      if (z.state !== 'attack' && z.obj.position.distanceTo(p) < 45) reachArms(z);
     }
     this.prints.update(dt, night > 0.5);
     // night respawns at spawn points far from the player
@@ -153,6 +153,30 @@ export class Zombies {
     for (const z of this.list) this.game.scene.remove(z.obj);
     this.list = [];
     this.spawns.forEach((s, i) => { if (!s.night) this.spawn(s, i); });
+  }
+}
+
+// Point both arms forward (classic reach) regardless of the rig's bone axes:
+// rotate each bone so its child lies along the target direction, in world space.
+const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _d = new THREE.Vector3(), _t = new THREE.Vector3();
+const _q = new THREE.Quaternion(), _w = new THREE.Quaternion(), _p = new THREE.Quaternion();
+function aimBone(bone, child, target, amount) {
+  bone.getWorldPosition(_a); child.getWorldPosition(_b);
+  _d.subVectors(_b, _a).normalize();
+  _q.setFromUnitVectors(_d, target);
+  bone.getWorldQuaternion(_w); _q.multiply(_w);
+  bone.parent.getWorldQuaternion(_p); _p.invert().multiply(_q);
+  bone.quaternion.slerp(_p, amount);
+  bone.updateMatrixWorld(true);
+}
+function reachArms(z) {
+  z.obj.updateMatrixWorld(true);
+  const yaw = z.yaw, sway = Math.sin(performance.now() * 0.002 + z.idx) * 0.08;
+  for (const [upper, lower, wrist, side] of z.arms) {
+    if (!upper || !lower || !wrist) continue;
+    _t.set(Math.sin(yaw) + Math.cos(yaw) * 0.18 * side, -0.28 + sway, Math.cos(yaw) - Math.sin(yaw) * 0.18 * side).normalize();
+    aimBone(upper, lower, _t, 0.8);
+    aimBone(lower, wrist, _t, 0.7);
   }
 }
 

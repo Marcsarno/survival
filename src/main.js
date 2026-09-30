@@ -143,7 +143,7 @@ class Game {
     }
     if (this.paused) return;
     if (i.hit('m')) this.ui.toggleMap();
-    if (i.hit('n')) { this.daynight.skip(); this.ui.toast(this.daynight.isNight ? 'Night falls.' : 'Morning comes.', 'info'); }
+    if (i.hit('n')) { this.daynight.skip(); this.ui.toast(this.daynight.hour > 12 ? 'Night falls.' : 'Morning comes.', 'info'); }
     if (i.hit('z')) this.camera.rotate(-1);
     if (i.hit('x')) this.camera.rotate(1);
     if (i.hit('+') || i.hit('=') || i.tHit('zoomIn')) this.camera.zoom(-1);

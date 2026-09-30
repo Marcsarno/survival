@@ -29,8 +29,8 @@ export class Snowfall {
     const p = this.points.geometry.attributes.position, a = p.array;
     const wind = Math.sin(this.t * 0.2) * 0.8 + 0.6;
     for (let i = 0; i < this.speed.length; i++) {
-      a[i * 3 + 1] -= this.speed[i] * dt;
-      a[i * 3] += (wind + Math.sin(this.t + i) * 0.3) * dt;
+      a[i * 3 + 1] -= this.speed[i] * dt * (0.7 + 0.5 * this.intensity);
+      a[i * 3] += (wind * this.intensity + Math.sin(this.t + i) * 0.3) * dt;
       a[i * 3 + 2] += Math.cos(this.t * 0.7 + i * 0.5) * 0.3 * dt;
       if (a[i * 3 + 1] < 0) a[i * 3 + 1] += this.box.y;
       // wrap horizontally around the focus
@@ -39,6 +39,7 @@ export class Snowfall {
       if (rz > this.box.z / 2) a[i * 3 + 2] -= this.box.z; else if (rz < -this.box.z / 2) a[i * 3 + 2] += this.box.z;
     }
     p.needsUpdate = true;
+    this.mat.opacity = Math.min(1, 0.55 + 0.3 * this.intensity); this.mat.size = 0.2 + 0.06 * this.intensity;
     this.points.position.y = focus.y;
   }
 }

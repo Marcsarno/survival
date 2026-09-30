@@ -340,6 +340,69 @@ def build_car(name, seed, kind):
     b.ico(Vector((L * 0.36, 0, 0.32 + body_h + 0.01)), 0.6, snow, scale=(1.0, W * 0.6, 0.12), jitter=0.12, rng=rng)
     return b.finish()
 
+def build_iguana(name, seed):
+    """A cold-stunned green iguana lying belly-up under a palm (a South Florida cold-snap classic)."""
+    rng = random.Random(seed); b = Builder(name)
+    skin, belly = mat("IguanaSkin", "#5f8a44"), mat("IguanaBelly", "#b8c483")
+    frost = mat("Frost", PAL["snow"], 0.8); dew = mat("Dewlap", "#c98a3a")
+    b.ico(Vector((0, 0, 0.1)), 0.16, skin, scale=(0.85, 2.1, 0.62), jitter=0.08, rng=rng, tag="body")
+    b.cone(Vector((0, 0.3, 0.1)), Vector((0, 0.52, 0.085)), 0.075, 0.028, skin, segs=5, rng=rng, tag="body")
+    b.cone(Vector((0, 0.36, 0.05)), Vector((0, 0.44, 0.03)), 0.03, 0.01, dew, segs=4)
+    b.cone(Vector((0, -0.3, 0.09)), Vector((0.08, -0.72, 0.05)), 0.07, 0.03, skin, segs=5, rng=rng, tag="body")
+    b.cone(Vector((0.08, -0.72, 0.05)), Vector((0.02, -1.15, 0.03)), 0.03, 0.006, skin, segs=4, rng=rng, tag="body")
+    for sx in (-1, 1):   # stiff legs sticking up
+        for sy in (-1, 1):
+            base = Vector((sx * 0.1, sy * 0.17, 0.14))
+            b.cone(base, base + Vector((sx * 0.08, sy * 0.04, 0.16)), 0.028, 0.018, skin, segs=4)
+    b.bm.normal_update()
+    bi = b.slot(belly)
+    for f, t in b.tags.items():
+        if t == "body" and f.normal.z > 0.35: f.material_index = bi
+    b.snow("body", frost, thresh=0.8, chance=0.4, rng=rng)
+    return b.finish()
+
+def build_flamingo(name, seed):
+    """Pink plastic lawn flamingo on wire legs, with snow on its back."""
+    rng = random.Random(seed); b = Builder(name)
+    pink, dark, wire = mat("FlamingoPink", "#e46a8e"), mat("FlamingoBeak", "#2a2426"), mat("Wire", "#6c7076", 0.5, 0.6)
+    snow = mat("Snow", PAL["snow"], 0.8)
+    b.ico(Vector((0, 0, 0.62)), 0.16, pink, scale=(0.9, 1.7, 0.85), jitter=0.06, rng=rng, tag="body")
+    b.cone(Vector((0, -0.22, 0.66)), Vector((0, -0.34, 0.74)), 0.07, 0.02, pink, segs=5)  # tail
+    pts = [Vector((0, 0.16, 0.68)), Vector((0, 0.24, 0.84)), Vector((0, 0.18, 0.98)), Vector((0, 0.24, 1.08))]
+    for p0, p1 in zip(pts, pts[1:]):
+        b.cone(p0, p1, 0.035, 0.03, pink, segs=5)
+    b.ico(Vector((0, 0.27, 1.1)), 0.05, pink, jitter=0.05, rng=rng)
+    b.cone(Vector((0, 0.31, 1.1)), Vector((0, 0.37, 1.04)), 0.022, 0.006, dark, segs=4)
+    for sx in (-0.04, 0.04):
+        b.cone(Vector((sx, 0, -0.15)), Vector((sx, 0.02, 0.55)), 0.008, 0.008, wire, segs=4)
+    b.snow("body", snow, thresh=0.85, chance=0.45, rng=rng)
+    return b.finish()
+
+def build_snowman(name, seed):
+    rng = random.Random(seed); b = Builder(name)
+    snow, shade = mat("Snow", PAL["snow"], 0.8), mat("SnowShade", PAL["snow_shade"], 0.85)
+    coal, carrot, stick, scarf, bucket = mat("Coal", "#1d1d20"), mat("Carrot", "#e0782c"), mat("Stick", "#5e4130"), mat("Scarf", "#b8322a"), mat("Bucket", "#4f6e8a", 0.6, 0.3)
+    z = 0
+    for r in (0.42, 0.3, 0.21):
+        b.ico(Vector((0, 0, z + r * 0.9)), r, snow, sub=2, jitter=0.06, rng=rng, tag="s")
+        z += r * 1.7
+    head_z = z - 0.21 * 0.8
+    for sx in (-0.07, 0.07):
+        b.box(Vector((sx, 0.19, head_z + 0.05)), (0.035, 0.035, 0.035), coal)
+    b.cone(Vector((0, 0.19, head_z)), Vector((0, 0.36, head_z - 0.01)), 0.03, 0.005, carrot, segs=6)
+    for k in range(3):
+        b.box(Vector((0, 0.29, 0.62 + k * 0.1)), (0.035, 0.035, 0.035), coal)
+    for sx in (-1, 1):
+        b.cone(Vector((sx * 0.24, 0, 0.95)), Vector((sx * 0.62, 0.05, 1.18)), 0.018, 0.008, stick, segs=4)
+    b.ico(Vector((0, 0, head_z - 0.17)), 0.2, scarf, scale=(1.1, 1.1, 0.32), jitter=0.05, rng=rng)
+    b.cone(Vector((0.1, 0.15, head_z - 0.2)), Vector((0.16, 0.2, head_z - 0.45)), 0.05, 0.04, scarf, segs=4)
+    b.cone(Vector((0, 0, head_z + 0.14)), Vector((0.02, 0, head_z + 0.34)), 0.13, 0.1, bucket, segs=7)
+    b.bm.normal_update()
+    si = b.slot(shade)
+    for f, t in b.tags.items():
+        if t == "s" and f.normal.z < -0.2: f.material_index = si
+    return b.finish()
+
 # ---------------------------------------------------------------- imported models
 def import_glb(fname):
     before = set(bpy.data.objects)
@@ -458,6 +521,9 @@ for i, r in enumerate((0.8, 1.4)):
 JOBS.append(("lantern", lambda: gen("lantern", lambda: build_lantern("lantern"))))
 JOBS.append(("car-sedan", lambda: gen("car-sedan", lambda: build_car("car-sedan", 91, "sedan"))))
 JOBS.append(("car-suv", lambda: gen("car-suv", lambda: build_car("car-suv", 92, "suv"))))
+JOBS.append(("iguana", lambda: gen("iguana", lambda: build_iguana("iguana", 101))))
+JOBS.append(("flamingo", lambda: gen("flamingo", lambda: build_flamingo("flamingo", 102))))
+JOBS.append(("snowman", lambda: gen("snowman", lambda: build_snowman("snowman", 103))))
 
 # downloaded props: (source, name, target meters, measure, snow threshold, texture size)
 PROPS = [
@@ -472,6 +538,7 @@ PROPS = [
     ("matchbox.glb", "matchbox", 0.16, "max", None, None),
     ("water-bottle.glb", "water-bottle", 0.32, "height", None, None),
     ("backpack.glb", "backpack", 0.55, "height", None, None),
+    ("radio.glb", "radio", 0.32, "max", None, None),
     ("rabbit.glb", "rabbit", 0.32, "height", None, 256),
     ("duck.glb", "duck", 0.38, "height", None, 256),
     ("owl.glb", "owl", 0.75, "height", None, 256),

@@ -134,8 +134,9 @@ export class UI {
     const sx = (v) => ((v - X0) / (X1 - X0)) * W, sz = (v) => ((v - Z0) / (Z1 - Z0)) * H;
     x.fillStyle = '#e8edf3'; x.fillRect(0, 0, W, H);
     const colors = { woods: '#b9cbb8', park: '#d8e6c8', cpd: '#ecdccb', canal: '#d4e0ea', beach: '#efe2c0', pharmacy: '#efcfc4', playground: '#e8d8a8', hibiscus: '#ecdccb', service: '#d2dccc', pond: '#c4dce8', camp: '#d9ccb8' };
+    const seen = g.stats.areas;
     for (const a of [...AREAS].reverse()) {
-      x.fillStyle = colors[a.id] || '#ddd'; x.beginPath();
+      x.fillStyle = seen.has(a.id) ? (colors[a.id] || '#ddd') : '#c9ced6'; x.beginPath();
       a.poly.forEach(([px, pz], i) => (i ? x.lineTo(sx(px), sz(pz)) : x.moveTo(sx(px), sz(pz)))); x.closePath(); x.fill();
     }
     x.fillStyle = '#5c8aa8'; x.fillRect(sx(-40), sz(60), sx(104) - sx(-40), sz(76) - sz(60)); x.fillRect(sx(134), 0, W - sx(134), H);
@@ -145,7 +146,8 @@ export class UI {
     for (const t of g.world.trails) { x.beginPath(); t.forEach(([px, pz], i) => (i ? x.lineTo(sx(px), sz(pz)) : x.moveTo(sx(px), sz(pz)))); x.stroke(); }
     x.setLineDash([]);
     x.fillStyle = '#2b3446'; x.font = 'bold 11px system-ui'; x.textAlign = 'center';
-    for (const a of AREAS) { const cx = a.poly.reduce((s, p) => s + p[0], 0) / a.poly.length, cz = a.poly.reduce((s, p) => s + p[1], 0) / a.poly.length; x.fillText(a.name, sx(cx), sz(cz)); }
+    for (const a of AREAS) { const cx = a.poly.reduce((s, p) => s + p[0], 0) / a.poly.length, cz = a.poly.reduce((s, p) => s + p[1], 0) / a.poly.length; x.fillStyle = seen.has(a.id) ? '#2b3446' : '#7d8491'; x.fillText(seen.has(a.id) ? a.name : '?', sx(cx), sz(cz)); }
+    x.fillStyle = '#2b3446';
     x.fillStyle = '#e08a3c'; x.font = '18px system-ui'; x.fillText('⌂', sx(SHELTER.x), sz(SHELTER.z) + 6);
     for (const i of g.interact.list) if (i.kind === 'pack' && !i.used) { x.fillStyle = '#c33'; x.fillText('✖', sx(i.x), sz(i.z) + 5); }
     const p = g.player.pos;

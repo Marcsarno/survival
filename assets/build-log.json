@@ -1,37 +1,7 @@
 [
  {
-  "name": "player",
-  "tris": 10198,
-  "bytes": 1718040
- },
- {
-  "name": "zombie-a",
-  "tris": 8450,
-  "bytes": 1511096
- },
- {
-  "name": "zombie-b",
-  "tris": 6404,
-  "bytes": 1269040
- },
- {
-  "name": "deer",
-  "tris": 2096,
-  "bytes": 580644
- },
- {
-  "name": "fox",
-  "tris": 1848,
-  "bytes": 622324
- },
- {
-  "name": "wolf",
-  "tris": 1962,
-  "bytes": 631608
- },
- {
-  "name": "dog",
-  "tris": 1950,
-  "bytes": 569276
+  "name": "flamingo",
+  "tris": 140,
+  "bytes": 11704
  }
 ]

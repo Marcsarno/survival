@@ -9,7 +9,7 @@ export const MODEL_LIST = [
   'shrub-1', 'shrub-2', 'shrub-3', 'agave', 'croton', 'palmetto', 'hedge',
   'rock-1', 'rock-2', 'rock-3', 'snow-mound-1', 'snow-mound-2', 'lantern', 'car-sedan', 'car-suv',
   'stump', 'fallen-log', 'wood-bundle', 'campfire', 'axe', 'pistol', 'medkit', 'food-can', 'matchbox',
-  'water-bottle', 'backpack', 'rabbit', 'duck', 'owl',
+  'water-bottle', 'backpack', 'rabbit', 'duck', 'owl', 'iguana', 'flamingo', 'snowman', 'radio',
   'player', 'zombie-a', 'zombie-b', 'deer', 'fox', 'wolf', 'dog',
 ];
 

@@ -16,7 +16,7 @@ export class Interactions {
       m.position.set(i.x, i.my || 0, i.z); m.rotation.set(i.mrx || 0, i.mry || 0, 0);
       g.scene.add(m); i.mesh = m;
     }
-    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack'].includes(i.kind)) {
+    if (['pickup', 'search', 'tool', 'wood', 'note', 'pack', 'radio'].includes(i.kind)) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.markerTex, transparent: true, depthWrite: false, opacity: 0, fog: false }));
       s.scale.setScalar(0.55); s.position.set(i.x, 1.5, i.z); s.renderOrder = 5;
       g.scene.add(s); i.marker = s;
@@ -103,7 +103,18 @@ export class Interactions {
         g.audio?.pickup(); this.markUsed(i);
         break;
       }
-      case 'note': ui.toast(i.text, 'info', 9000); i.label = i.label.replace('Read', 'Reread'); break;
+      case 'note': ui.toast(i.text, 'info', 9000); i.label = i.label.replace('Read', 'Reread'); g.stats.notes = (g.stats.notes || 0) + 1; break;
+      case 'radio': {
+        const lines = [
+          '…kkhh… this is WDRF on emergency power… Deerfield warming center at the high school is FULL… do not travel after dark…',
+          '…shhhk… anyone on Hillsboro, the church lot has a fire going and room for kids… bring wood if you can…',
+          '…khh… repeating: the frozen follow lights and noise. Travel slow. Travel quiet… kkhh…',
+          '…static… a man counting down the days since the snow started. Fifty-three… fifty-four…',
+        ];
+        i.n = ((i.n ?? -1) + 1) % lines.length;
+        g.audio?.radio(); ui.toast(lines[i.n], 'info', 9000);
+        break;
+      }
       case 'stash': ui.openShelter(); break;
       case 'build': ui.openShelter(); break;
       case 'fire': g.shelter.tendFire(); break;

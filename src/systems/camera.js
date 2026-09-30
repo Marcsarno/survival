@@ -13,7 +13,8 @@ export class FollowCamera {
     this.focus = new THREE.Vector3();
     this.shake = 0;
   }
-  zoom(d) { this.level = clamp(this.level + d, 0, CAM_LEVELS.length - 1); }
+  zoom(d) { this.cinematic = false; this.level = clamp(this.level + d, 0, CAM_LEVELS.length - 1); }
+  toggleCinematic() { this.cinematic = !this.cinematic; }
   rotate(d) { this.targetYaw += d * Math.PI / 4; }
   /** unit vectors on the ground for screen-up and screen-right */
   basis() {
@@ -24,9 +25,10 @@ export class FollowCamera {
   update(dt, target, snap = false) {
     const k = snap ? 1 : 1 - Math.exp(-dt * 6);
     this.focus.lerp(target, k);
-    this.height = lerp(this.height, CAM_LEVELS[this.level], snap ? 1 : 1 - Math.exp(-dt * 5));
+    this.height = lerp(this.height, this.cinematic ? 4.2 : CAM_LEVELS[this.level], snap ? 1 : 1 - Math.exp(-dt * 5));
     this.yaw = angleLerp(this.yaw, this.targetYaw, snap ? 1 : 1 - Math.exp(-dt * 7));
-    const pitch = lerp(0.82, 1.0, (this.height - 9) / 21); // radians above horizon
+    // radians above the horizon: steeper as the camera rises; the cinematic view sits low and close
+    const pitch = this.height < 8 ? lerp(0.32, 0.82, (this.height - 4.2) / 4.8) : lerp(0.82, 1.0, (this.height - 9) / 21);
     const dist = this.height / Math.tan(pitch);
     const c = this.cam;
     c.position.set(this.focus.x + Math.sin(this.yaw) * dist, this.focus.y + this.height, this.focus.z + Math.cos(this.yaw) * dist);

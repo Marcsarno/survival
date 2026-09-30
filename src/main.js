@@ -144,6 +144,7 @@ class Game {
     if (this.paused) return;
     if (i.hit('m')) this.ui.toggleMap();
     if (i.hit('n')) { this.daynight.skip(); this.ui.toast(this.daynight.hour > 12 ? 'Night falls.' : 'Morning comes.', 'info'); }
+    if (i.hit('c')) { this.camera.toggleCinematic(); this.ui.toast(this.camera.cinematic ? 'Cinematic camera (C to return)' : 'Gameplay camera', 'info', 1800); }
     if (i.hit('z')) this.camera.rotate(-1);
     if (i.hit('x')) this.camera.rotate(1);
     if (i.hit('+') || i.hit('=') || i.tHit('zoomIn')) this.camera.zoom(-1);
@@ -161,6 +162,7 @@ class Game {
   update(dt) {
     this.noise *= Math.exp(-dt * 2);
     this.daynight.update(dt, this.player.pos);
+    this.updateWeather(dt);
     this.player.update(dt, this.input, this.camera);
     this.zombies.update(dt);
     this.wildlife.update(dt);
@@ -180,6 +182,28 @@ class Game {
     if (this._saveT > 30) { this._saveT = 0; this.save(); }
   }
 
+  /** Passing snow squalls: visibility drops, snow thickens, the wind rises, the cold bites harder. */
+  updateWeather(dt) {
+    const w = this.weather || (this.weather = { t: 150 + Math.random() * 120, target: 0, squall: 0 });
+    w.t -= dt;
+    if (w.t <= 0) {
+      if (w.target === 0) { w.target = 1; w.t = 45 + Math.random() * 30; this.ui.toast('A snow squall rolls in off the ocean.', 'info', 4000); }
+      else { w.target = 0; w.t = 200 + Math.random() * 200; }
+    }
+    w.squall += (w.target - w.squall) * Math.min(1, dt * 0.35);
+    const fog = this.scene.fog;
+    fog.near *= 1 - 0.65 * w.squall; fog.far *= 1 - 0.6 * w.squall;
+    this.snow.intensity = 1 + 1.8 * w.squall;
+    // the far-bank lantern walker at night
+    const fl = this.world.dynamic.farLantern;
+    fl.visible = this.daynight.nightness > 0.6;
+    if (fl.visible) {
+      const t = performance.now() * 0.00002;
+      fl.position.x = 35 + Math.sin(t * 6) * 60; fl.position.y = 1.2 + Math.abs(Math.sin(performance.now() * 0.004)) * 0.08;
+      if (!this._sawLantern && Math.abs(this.player.pos.z - 57) < 8 && Math.abs(this.player.pos.x - fl.position.x) < 40) { this._sawLantern = true; this.ui.toast('A lantern moves along the far bank of the canal. Someone else is out there.', 'info', 6000); }
+    }
+  }
+
   updateSurvival(dt) {
     const s = this.player.stats, p = this.player.pos;
     if (this.player.dead) return;
@@ -189,7 +213,7 @@ class Game {
       s.warmth = Math.min(100, s.warmth + dt * 7);
       if (s.warmth > 60) s.health = Math.min(100, s.health + dt * 0.6);
     } else if (!sheltered) {
-      let drain = 0.28 + 0.3 * this.daynight.nightness;
+      let drain = (0.28 + 0.3 * this.daynight.nightness) * (1 + 0.35 * (this.weather?.squall || 0));
       if (this.player.lanternOn) drain *= 0.75;
       s.warmth = Math.max(0, s.warmth - drain * dt);
     }
@@ -261,7 +285,7 @@ class Game {
     try {
       const d = {
         v: 1, hour: this.daynight.hour, day: this.daynight.day, pos: [this.player.pos.x, this.player.pos.z], stats: this.player.stats,
-        inv: this.inv.toJSON(), tools: this.tools, shelter: this.shelter.toJSON(), used: this.interact.usedIds(), dog: this.stats.dog,
+        inv: this.inv.toJSON(), tools: this.tools, shelter: this.shelter.toJSON(), used: this.interact.usedIds(), dog: this.stats.dog, areas: [...this.stats.areas],
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(d));
     } catch { /* storage unavailable: play without saving */ }
@@ -276,6 +300,7 @@ class Game {
     this.inv = Inventory.from(d.inv); this.tools = d.tools;
     this.shelter.load(d.shelter);
     this.interact.restoreUsed(d.used || []);
+    this.stats.areas = new Set(d.areas || []);
     if (d.dog) { this.wildlife.befriend(); this.stats.dog = true; const dg = this.wildlife.dog; if (dg) dg.obj.position.set(d.pos[0] + 1.5, 0, d.pos[1] + 1.5); }
     return true;
   }

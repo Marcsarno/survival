@@ -295,5 +295,16 @@
     "license": "CC0 1.0",
     "title": "bonfire",
     "bytes": 43676
+  },
+  {
+    "code": "S9",
+    "id": "TPqvwkyWdV",
+    "name": "radio",
+    "creator": "Quaternius",
+    "page": "https://poly.pizza/m/TPqvwkyWdV",
+    "download": "https://static.poly.pizza/7ed34c76-5ef7-4b70-b7d8-ce06e8128b07.glb",
+    "license": "CC0 1.0",
+    "title": "radio",
+    "bytes": 28996
   }
 ]

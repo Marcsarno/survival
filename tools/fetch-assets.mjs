@@ -36,6 +36,7 @@ export const SELECTED = [
   { code: 'S11', id: 'fei4I7FfrJ', name: 'logs', creator: 'Quaternius' },
   { code: 'S12', id: 'nFvEbUX6LE', name: 'stump', creator: 'Quaternius' },
   { code: 'S16', id: 'k1e0cOzi8A', name: 'bonfire', creator: 'Quaternius' },
+  { code: 'S9', id: 'TPqvwkyWdV', name: 'radio', creator: 'Quaternius' },
 ];
 
 async function fetchOne(a) {
@@ -52,7 +53,10 @@ async function fetchOne(a) {
 
 await fs.mkdir(OUT, { recursive: true });
 const results = [];
+const existing = JSON.parse(await fs.readFile(path.join(OUT, 'manifest.json'), 'utf8').catch(() => '[]'));
 for (const a of SELECTED) {
+  const had = existing.find((e) => e.id === a.id);
+  if (had && !process.argv.includes('--all')) { results.push(had); continue; }
   try {
     const r = await fetchOne(a);
     results.push(r);

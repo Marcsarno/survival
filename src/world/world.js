@@ -197,6 +197,28 @@ export function buildWorld(scene, assets, col) {
   car(95, -1.6, Math.PI - 0.1, 'sedan', 1, null);
   for (let i = 0; i < 18; i++) { const x = -40 + rng() * 146, z = (rng() < 0.5 ? -1 : 1) * (2.5 + rng() * 1.2); if (free(x, z, 1)) place('snow-mound-1', x, z, undefined, 0.6 + rng() * 0.5); }
 
+  // -------------------------------------------------------------- South Florida details
+  {
+    const iguanaLines = [
+      'Stiff as a board, belly-up under the palm. Iguanas lock up in the cold and drop from the trees. This one might thaw by spring.',
+      'Another frozen iguana. Somewhere a local news crew would have loved this.',
+      'The iguana twitches one claw when you nudge it. Still alive — just very, very cold.',
+      'A green iguana, frosted like a cake decoration. The palms have been raining them.',
+      'Even the iguanas gave up on Florida this winter.',
+    ];
+    [[-46, 25.5, 0.4], [27.5, 9.4, 2.1], [30.4, -26.4, 1.2], [45.4, 51.6, -0.6], [119.6, -18.4, 2.8]].forEach(([x, z, ry], i) => {
+      place('iguana', x, z, ry, 1);
+      addI({ kind: 'note', x, z, r: 1.6, label: 'Poke the frozen iguana', text: iguanaLines[i] });
+    });
+    for (const [x, z, ry] of [[35, 9.2, 0.5], [36.1, 9.9, -0.3], [-8, -8.8, 2.4], [66.5, 9.4, 1.0], [-3.2, -9.0, 3.3], [68, 49.8, 0.2]]) place('flamingo', x, z, ry, 1);
+    place('snowman', 55, 9.6, Math.PI + 0.3, 1, 0.45);
+    addI({ kind: 'note', x: 55, z: 9.6, r: 1.9, label: 'Look at the snowman', text: 'Bottle-cap buttons, a beach-bucket hat, a carrot nose. Kids built this, and not long ago. The first snowman this street has ever seen.' });
+    place('snowman', 46.5, -25.5, 0.4, 0.8, 0.4);
+    place('radio', 123.4, -10.4, -1.2, 1.2, 0);
+    B.crate(b, col, mtx(123.4, 0, -10.4, 0.2), 0.5);
+    addI({ kind: 'radio', x: 123.4, z: -9.4, r: 1.8, label: 'Turn the radio dial' });
+  }
+
   // -------------------------------------------------------------- Sunflower Tot Lot (playground)
   {
     const cx = 39, cz = -19;
@@ -421,6 +443,10 @@ export function buildWorld(scene, assets, col) {
   const ground = buildGround(scene, { waterPolys: WATER_POLYS, trailLines: TRAILS });
   b.finalize();
   inst.finalize();
+  // a lone lantern that walks the far canal bank at night (unreachable): someone else is out there
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), color: '#ffc27a', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  glow.scale.setScalar(2.2); glow.position.set(0, 1.2, 79.5); glow.visible = false; scene.add(glow);
+  dynamic.farLantern = glow;
   return { interact, zombieSpawns, animalSpawns, lights, dynamic, water: [canal, sea], ground, trails: TRAILS };
 }
 
@@ -451,6 +477,14 @@ function snowBanks(scene, rng) {
   g.computeVertexNormals();
   const m = new THREE.MeshStandardMaterial({ color: '#eef2fa', roughness: 0.85, flatShading: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
   const mesh = new THREE.Mesh(g, m); mesh.receiveShadow = true; mesh.userData.noSeeThrough = true; scene.add(mesh);
+}
+
+function glowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,230,180,1)'); gr.addColorStop(0.2, 'rgba(255,190,110,0.8)'); gr.addColorStop(1, 'rgba(255,160,80,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
 }
 
 const paintCache = new Map();

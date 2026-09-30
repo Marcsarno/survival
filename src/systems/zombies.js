@@ -12,6 +12,7 @@ export class Zombies {
   constructor(game, spawns) {
     this.game = game; this.list = []; this.spawns = spawns;
     this.prints = new Footprints(game.scene, 500);
+    this.flow = new FlowField(game.col);
     this.respawnT = 0;
     spawns.forEach((s, i) => { if (!s.night) this.spawn(s, i); });
   }
@@ -46,6 +47,7 @@ export class Zombies {
 
   update(dt) {
     const g = this.game, p = g.player.pos, night = g.daynight.nightness;
+    this.flow.update(dt, p);
     const safeZone = g.shelter.upgrades.post;
     for (const z of this.list) {
       z.mixer.update(dt);
@@ -95,6 +97,12 @@ export class Zombies {
       if (safeZone && goal) {
         const sx = o.x - SHELTER.x, sz = o.z - SHELTER.z;
         if (Math.hypot(sx, sz) < 20) { goal = new THREE.Vector3(SHELTER.x + sx * 2, 0, SHELTER.z + sz * 2); z.state = 'wander'; speed = 1.2; }
+      }
+      // route around walls, cars and fences with the flow field when the direct line is blocked
+      if (goal === p && speed > 0 && d > 2) {
+        z.losT = (z.losT || 0) - dt;
+        if (z.losT <= 0) { z.losT = 0.35; z.direct = !g.col.blocked(o.x, o.z, p.x, p.z, 0.6); }
+        if (!z.direct) { const step = this.flow.next(o.x, o.z); if (step) goal = step; }
       }
       if (goal && speed > 0) {
         const gx = goal.x - o.x, gz = goal.z - o.z, gl = Math.hypot(gx, gz);
@@ -153,6 +161,46 @@ export class Zombies {
     for (const z of this.list) this.game.scene.remove(z.obj);
     this.list = [];
     this.spawns.forEach((s, i) => { if (!s.night) this.spawn(s, i); });
+  }
+}
+
+// Breadth-first flow field on a 1 m grid around the player (radius ~34 m), rebuilt a few times a second.
+// Cells are walkable if a 0.32 m circle there does not touch a collider (cached per cell).
+class FlowField {
+  constructor(col) { this.col = col; this.walk = new Map(); this.dist = new Map(); this.t = 0; this.R = 34; }
+  key(i, j) { return i * 4096 + j; }
+  walkable(i, j) {
+    const k = this.key(i, j);
+    let w = this.walk.get(k);
+    if (w === undefined) { const x = i + 0.5, z = j + 0.5; w = !this.col.resolve(x, z, 0.32, 1).hit; this.walk.set(k, w); }
+    return w;
+  }
+  update(dt, p) {
+    this.t -= dt; if (this.t > 0) return; this.t = 0.4;
+    const pi = Math.floor(p.x), pj = Math.floor(p.z), R = this.R;
+    const dist = new Map(); const q = [[pi, pj]]; dist.set(this.key(pi, pj), 0);
+    for (let h = 0; h < q.length; h++) {
+      const [i, j] = q[h], d0 = dist.get(this.key(i, j));
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+        if (!di && !dj) continue;
+        const ni = i + di, nj = j + dj;
+        if (Math.abs(ni - pi) > R || Math.abs(nj - pj) > R) continue;
+        const k = this.key(ni, nj); if (dist.has(k) || !this.walkable(ni, nj)) continue;
+        if (di && dj && (!this.walkable(i + di, j) || !this.walkable(i, j + dj))) continue; // no corner cutting
+        dist.set(k, d0 + (di && dj ? 1.414 : 1)); q.push([ni, nj]);
+      }
+    }
+    this.dist = dist;
+  }
+  /** center of the neighboring cell that is closest to the player, or null */
+  next(x, z) {
+    const i = Math.floor(x), j = Math.floor(z);
+    let best = null, bd = this.dist.get(this.key(i, j)) ?? Infinity;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      const d = this.dist.get(this.key(i + di, j + dj));
+      if (d !== undefined && d < bd) { bd = d; best = [i + di, j + dj]; }
+    }
+    return best ? new THREE.Vector3(best[0] + 0.5, 0, best[1] + 0.5) : null;
   }
 }
 

@@ -165,6 +165,19 @@ try {
     await page.evaluate(() => window.__game.teleport(-60, 16)); await sleep(300);
   }
 
+  // 3b pathfinding: a zombie behind a house must find its way around to the player on the street
+  if (want('pathing')) {
+    await page.evaluate(() => { const g = window.__game; g.teleport(-11, -5); const z = g.zombies.alive()[0]; z.obj.position.set(-11, 0, -23.5); z.home.set(-11, 0, -23.5); z.state = 'chase'; window.__pathZ = z; });
+    let best = 99, t = 0;
+    while (t < 26000 && best > 2.5) {
+      const d = await page.evaluate(() => { const g = window.__game, z = window.__pathZ; g.noise = 2.5; g.player.stats.health = 100; return z.obj.position.distanceTo(g.player.pos); });
+      best = Math.min(best, d); await sleep(500); t += 500;
+    }
+    record('zombie-pathfinding', best <= 2.5, { closest: +best.toFixed(2), seconds: t / 1000, note: 'zombie placed behind a house; player noise forced so it hunts (test shortcut)' });
+    await page.evaluate(() => { const g = window.__game; g.zombies.resetAll(); g.teleport(-60, 16); });
+    await sleep(300);
+  }
+
   // 4 woods loop on foot: park west gate -> trail -> woodshed (wood + axe) -> back to shelter
   if (want('woods')) {
     await route('park-to-woodshed', [[-70, 13], [-80, 12], [-92, 6], [-100, 4]]);

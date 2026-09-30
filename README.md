@@ -50,7 +50,7 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 | Canal Homes | Backyards, patios and docks on the intracoastal, ice floes, ducks |
 | Deerfield Beach Access | Sand and snow, dune fences, lifeguard stand, snack hut, driftwood |
 
-**The resource loop.** You find supplies and firewood; your pack holds 10 items (16 with the hiking backpack). Carry them back and store them in the stash. The fire burns fuel all the time. Feeding it wood keeps the shelter warm, and warmth drains while you're outside, faster at night. If you fall, you drop the pack where you fell and wake at the shelter; walk back to recover it (it's marked ✖ on the map).
+**The resource loop.** You find supplies and firewood; your pack holds 10 items (16 with the hiking backpack). Carry them back and store them in the stash. The fire burns fuel all the time. Feeding it wood keeps the shelter warm, and warmth drains while you're outside, faster at night. Hunger empties over a day, so food matters. If you fall, you drop the pack where you fell and wake at the shelter; walk back to recover it (it's marked ✖ on the map).
 
 **Shelter upgrades,** built from stashed or carried supplies:
 - **Windbreak walls:** the fire burns 40% longer.

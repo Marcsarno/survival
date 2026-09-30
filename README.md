@@ -6,7 +6,9 @@ This build is the **opening-route test**: a compact, linear, playable approach. 
 
 It is built with Three.js and Vite and runs in a desktop or phone browser, designed for portrait phones.
 
-> The earlier sandbox build (nine areas, inventory, crafting, combat) is preserved at git tag `baseline-sandbox-2026-09-30`. The live site https://sarno-survive.vercel.app still shows that sandbox until the slice is deployed.
+**Play it:** <https://sarno-survive.vercel.app>
+
+> The earlier sandbox build (nine areas, inventory, crafting, combat) is preserved at git tag `baseline-sandbox-2026-09-30`.
 
 ## Run it
 

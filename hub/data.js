@@ -15,7 +15,7 @@ window.HUB = {
     goal: 'A compact, linear opening route for portrait phones: Shelter → small neighborhood edge → woods → deeper snowy trail → the house where Arianna is being held. Fixed isometric camera, grounded stand-in movement, visible footprints. No inventory, combat, dialogue or cinematics in this slice. It should feel like a worried father moving from fragile safety toward a dangerous house.',
     builds: [
       { status: 'agent-tested', label: 'Local dev build: http://localhost:5173/', href: 'http://localhost:5173/', note: 'Run `npm run dev` in the project folder first. ?debug=1 shows fps, position and ground type; ?dev=1 adds keys 1–8 to jump to checkpoints.' },
-      { status: 'superseded', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'Still the old sandbox until someone runs `npm run deploy`. Not deployed in this session.' },
+      { status: 'agent-tested', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'The slice, deployed 2026-09-30 at Marc’s request. The playtest passed 20 of 20 against it.' },
       { status: 'reference', label: 'Baseline source: git tag baseline-sandbox-2026-09-30', note: 'The sandbox before this revision (commit 176d7a5). `git checkout baseline-sandbox-2026-09-30` restores it.' },
     ],
     controls: [
@@ -51,7 +51,6 @@ window.HUB = {
       'Marc plays it on a real phone and judges pacing, camera distance and the character size. The character is about 4–5% of screen height in portrait.',
       'Decide the story beats for the approach (for example "DAD!" in the distance, a voice from the house). None were added: this slice tells the route through layout and light only.',
       'Import a final Marc model, then tune rigging, the walk/jog blend and true foot-contact events against it.',
-      'Deploy to Vercel only when Marc wants the live link to switch from the sandbox to the slice.',
     ],
     unverified: [
       'The Mr. Mak Workspace repository (github.com/witnesstodark/mr-mak-workspace) was NOT inspected: the web fetch was declined this session. This hub borrows only the general idea: one browsable place for plan, references, assets and captures.',

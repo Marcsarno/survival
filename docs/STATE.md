@@ -1,6 +1,6 @@
 # Current state
 
-Last updated 2026-09-30. The project is now the **opening-route slice** (commit after `c98a538` on `main`). The sandbox that preceded it is at git tag `baseline-sandbox-2026-09-30`, and it is still what https://sarno-survive.vercel.app serves: the slice has not been deployed.
+Last updated 2026-09-30. The project is now the **opening-route slice** (commit after `c98a538` on `main`). It is live at https://sarno-survive.vercel.app (deployed 2026-09-30; the playtest passed 20 of 20 against the live site). The sandbox that preceded it is at git tag `baseline-sandbox-2026-09-30`.
 
 The visual production record is in `hub/` (open `hub/index.html` or run `npm run hub`). Keep it updated as work lands; see `hub/README.md`.
 
@@ -41,7 +41,6 @@ The visual production record is in `hub/` (open `hub/index.html` or run `npm run
 1. Marc plays on a phone and judges camera distance, character size, pacing and the house reveal.
 2. Marc decides the approach's story beats (for example the distant "DAD!", or a voice from the house). None were added on purpose.
 3. Bring in a final Marc model (Tripo was mentioned), then retune the gait blend and use true contact events from the new rig (`Player.onFootfall` is the hook).
-4. Deploy the slice when Marc wants the live link to change.
 
 ## Deployment
 

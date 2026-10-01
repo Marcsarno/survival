@@ -8,7 +8,7 @@ Last updated 2026-10-01. The project is the **opening, neighborhood pass**, buil
 - **Pace:** her call turns the search into a run.
 - **Choice:** a short muddy passage or firm ground.
 
-Live: <https://sarno-survive.vercel.app> **still runs pass 2** (the seawall walk, deployed 2026-10-01). This pass is local only until Marc asks for a deploy.
+Live: <https://sarno-survive.vercel.app> runs this pass (deployed 2026-10-01 at Marc's request; playtest 17/17 against it).
 
 Builds:
 - **Pass 2 (the seawall walk):** at tag `baseline-opening-pass2-2026-10-01`.
@@ -70,12 +70,12 @@ The visual record is `hub/` (`npm run hub`), **Opening redesign** tab. It has:
 
 ## Next steps (suggested)
 
-1. Marc plays it and says what is wrong (local build; deploy when he asks).
+1. Marc plays it on his phone and says what is wrong.
 2. Then what he asks for: a modeled flat tire and open trunk, more to find on the backyard stretch, an idle clip and a better landing, sound for the run and the mud, or the door confrontation.
 
 ## Deployment
 
-- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (pass 2 since 2026-10-01).
+- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (the neighborhood pass since 2026-10-01).
 - **Redeploy (only when Marc asks):**
   - Run `npx vercel whoami`; it should print `marc731-6361`.
   - Then run `npm run deploy`.

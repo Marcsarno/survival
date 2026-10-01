@@ -12,7 +12,7 @@ The confrontation at the door, and everything after it, is later work. Lines are
 
 It is built with Three.js and Vite and runs in a desktop or phone browser, designed for portrait phones.
 
-**Live site:** <https://sarno-survive.vercel.app> still runs the previous build (pass 2, the seawall walk) until this one is deployed.
+**Live site:** <https://sarno-survive.vercel.app> runs this build.
 
 > Earlier builds: pass 2 is at git tag `baseline-opening-pass2-2026-10-01`; the long-route slice at `baseline-opening-route-2026-09-30`; the sandbox (nine areas, inventory, crafting, combat) at `baseline-sandbox-2026-09-30`.
 

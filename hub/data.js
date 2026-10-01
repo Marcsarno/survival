@@ -25,7 +25,7 @@ window.HUB = {
       'Controls: <b>WASD / arrows</b> or a left-thumb drag to walk; after Arianna calls, the same input runs · <b>E</b> (or the E button) to try and climb the gate and to pick up the bunny · <b>Esc</b> pause · <b>R</b> restart.',
       'Camera: candidate A by default. <code>?camset=b</code> or <code>?camset=pass2</code> switches; <code>?cam=fov,dist,pitch,lead</code> tunes.',
       'Hub: <code>npm run hub</code>. Checks: <code>npm run playtest</code> (17 checks), <code>node tools/walkthrough.mjs --clips</code> (and <code>--firm</code>), <code>node tools/camera-compare.mjs</code>, then <code>node tools/hub-timings.mjs</code>.',
-      'Not deployed: https://sarno-survive.vercel.app still runs pass 2 (git tag <code>baseline-opening-pass2-2026-10-01</code>).',
+      'Live: https://sarno-survive.vercel.app runs this pass (deployed 2026-10-01 at Marc’s request; playtest 17/17 against it). Pass 2 is at git tag <code>baseline-opening-pass2-2026-10-01</code>.',
     ],
     diagnosis: [
       'The opening (pass 2, captured below before any change) starts on a long canal promenade: water, a long sidewalk, flat grass, a toppled chair and a cooler. It does not say "collapse" or "search" on the first screen.',
@@ -150,7 +150,7 @@ window.HUB = {
       'Marc’s lines are kept (“Arianna?”, “She was here.”, “She wouldn’t leave this.”, “Locked.”, “Daddy!”, “Stay there.”). No new story canon.',
       'The seawall, canal and pump house are gone from this route; the pass-2 build is at git tag baseline-opening-pass2-2026-10-01.',
       'Golden hour sinking toward sunset along the walk; candle and lantern light at the house only; no working streetlights.',
-      'Not deployed: the live site still runs pass 2 until Marc asks for a deploy.',
+      'Deployed 2026-10-01 at Marc’s request; playtest 17/17 against the live site.',
     ],
   },
   overview: {
@@ -158,7 +158,7 @@ window.HUB = {
     goal: 'The neighborhood pass of the opening (Marc\u2019s visual revision of 2026-10-01): Marc already searching an abandoned South Florida neighborhood at golden hour: the street → round the boarded house → the backyard and its locked gate → the park → the bunny → her call, running → mud or firm ground → the house, top-right. Text only. About 75 s for an agent. See the Opening redesign tab.',
     builds: [
       { status: 'agent-tested', label: 'Local dev build: http://localhost:5173/', href: 'http://localhost:5173/', note: 'Run `npm run dev` in the project folder first. ?debug=1 shows fps, position, ground and beats; ?dev=1 adds keys 1–7 to jump to checkpoints; ?voices=0 turns the placeholder voices off.' },
-      { status: 'agent-tested', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'Still opening pass 2 (deployed 2026-10-01). The neighborhood pass is local only until Marc asks for a deploy.' },
+      { status: 'agent-tested', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'The neighborhood pass, deployed 2026-10-01 at Marc’s request; playtest 17/17 against it.' },
       { status: 'reference', label: 'Pass 2 (the seawall walk): git tag baseline-opening-pass2-2026-10-01', note: 'Run git checkout baseline-opening-pass2-2026-10-01 to restore it.' },
       { status: 'reference', label: 'Previous builds: git tags baseline-opening-route-2026-09-30 (slice v1) and baseline-sandbox-2026-09-30', note: '`git checkout <tag>` restores either.' },
     ],
@@ -172,7 +172,7 @@ window.HUB = {
     ],
     progress: [
       { status: 'agent-tested', item: 'Opening, neighborhood pass: street → passage → backyard gate → park → bunny → run → mud or firm → the house', note: 'Plays start to end card with normal controls, either way (about 75 s for an agent). Text only. 17/17 automated checks.' },
-      { status: 'superseded', item: 'Opening pass 2: seawall → park → lane → locked gate → the house', note: 'Tag baseline-opening-pass2-2026-10-01; still the live site.' },
+      { status: 'superseded', item: 'Opening pass 2: seawall → park → lane → locked gate → the house', note: 'Tag baseline-opening-pass2-2026-10-01.' },
       { status: 'implemented', item: 'Marc: Marc’s Tripo model, rigged, with Walk, Run, Climb and Frustrated', note: 'blender/build_marc.py → public/assets/models/marc.glb. A methodical walk while searching; the Run clip after her call; the gate uses Frustrated then Climb.' },
       { status: 'implemented', item: 'Blender asset kit', note: 'blender/build_kit.py: generated leaf (green and autumn), frond, palmetto, big-leaf, grass and fallen-leaf textures; oaks (two copper), palms, shrubs (one rust), big-leaf plants, three grass tufts; seven houses (boarded, teal, sand…), garden walls, fences, the gate; playground, bunny, branch, an open suitcase, a box. The neighborhood additions: build_kit.py -- neighborhood.' },
       { status: 'implemented', item: 'Poly Haven textures, HDRI and props; Poly Pizza vehicles and rowboat', note: 'tools/fetch-polyhaven.mjs, tools/fetch-assets.mjs. All in CREDITS.md. Compressed for phones by tools/optimize-assets.mjs (the opening downloads about 7.6 MB).' },
@@ -182,7 +182,7 @@ window.HUB = {
     ],
     checks: T.checks || [],
     next: [
-      'Marc plays the neighborhood pass and says what is wrong (local build; deploy when he asks).',
+      'Marc plays the neighborhood pass on his phone and says what is wrong.',
       'Then: what he asks for, or the door confrontation.',
     ],
     unverified: [

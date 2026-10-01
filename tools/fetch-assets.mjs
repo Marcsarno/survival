@@ -37,6 +37,12 @@ export const SELECTED = [
   { code: 'S12', id: 'nFvEbUX6LE', name: 'stump', creator: 'Quaternius' },
   { code: 'S16', id: 'k1e0cOzi8A', name: 'bonfire', creator: 'Quaternius' },
   { code: 'S9', id: 'TPqvwkyWdV', name: 'radio', creator: 'Quaternius' },
+  // opening redesign, pass 2: vehicles and the rowboat (retextured in blender/kit/props.py)
+  { code: 'V1', id: 'Cz6yDaUcM9', name: 'car-white', creator: 'Quaternius' },
+  { code: 'V2', id: 'vTTTjDoxhV', name: 'stationwagon', creator: 'Kay Lousberg' },
+  { code: 'V3', id: 'Y67erogmR9', name: 'broken-car', creator: 'Quaternius' },
+  { code: 'V4', id: 'BbRojf2v3H', name: 'van', creator: 'PuKkBuMXDD' },
+  { code: 'B1', id: 'dt1yhb5AYXD', name: 'rowboat', creator: 'Poly by Google' },
 ];
 
 async function fetchOne(a) {

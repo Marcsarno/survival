@@ -2,13 +2,19 @@
 
 A story-first survival game for phones, set in a snowbound South Florida after the power is gone. You play Marc, a father trying to reach his daughter.
 
-This build is the **opening-route test**: a compact, linear, playable approach. Marc leaves the family's shelter, passes the last houses of a small neighborhood, opens a backyard gate into the woods, follows a deeper snowy trail, and reaches the house where Arianna is being held. The confrontation at the door and everything after it are later work. It is graybox: stand-in character, simple geometry, lighting and layout first.
+This build is **opening pass 2**. Marc (his own model) is already searching for his daughter when the game starts:
+- He walks the seawall of a Florida canal at golden hour, then crosses a park where a swing is still moving.
+- He finds Arianna's prints in the playground sand, then her stuffed bunny in a leafy lane.
+- He hears her call, finds a gate locked, and climbs it.
+- He reaches a house where a figure leaves the window, and is told "Stay there."
+
+The confrontation at the door, and everything after it, is later work. Lines are text only for now.
 
 It is built with Three.js and Vite and runs in a desktop or phone browser, designed for portrait phones.
 
-**Play it:** <https://sarno-survive.vercel.app>
+**Live site:** <https://sarno-survive.vercel.app> still runs the previous build (slice v1, the long route) until this one is deployed.
 
-> The earlier sandbox build (nine areas, inventory, crafting, combat) is preserved at git tag `baseline-sandbox-2026-09-30`.
+> Earlier builds: the long-route slice is at git tag `baseline-opening-route-2026-09-30`; the sandbox (nine areas, inventory, crafting, combat) is at `baseline-sandbox-2026-09-30`.
 
 ## Run it
 
@@ -27,35 +33,31 @@ For a production build: `npm run build`, then `npm run preview` serves `dist/` a
 
 | | Keyboard | Touch (portrait) |
 |---|---|---|
-| Walk | WASD / arrows. W is north, up-screen | Put a thumb down anywhere on the left side and drag (floating stick) |
-| Jog (a modest step up) | hold Shift | 🏃 on/off |
-| Interact (the gate) | E | E (lights up when something is in reach) |
-| Lantern | L | 🏮 |
+| Walk (one methodical pace, no run) | WASD / arrows (W is up-screen) | Put a thumb down anywhere on the left side and drag |
+| Interact: pick up, open, climb | E | E (lights up when something is in reach) |
+| Sound on/off | | 🔊 |
 | Pause / help | Esc or H | II |
-| Restart the route | R, or the button on the pause and end cards | Pause → Restart route |
+| Restart | R, or the button on the pause and end cards | Pause → Restart |
 
-The camera never rotates. It looks north from a fixed isometric angle and leads toward where you are going.
+The camera never rotates. It looks north from a fixed angle and frames what is ahead.
 
-## The route
+## The opening
 
-About 350 m. An agent walking straight between waypoints takes about 2 min 20 s; a first exploratory walk will take longer.
+About 110 m; an agent reaches the end card in about 94 s. Each beat is a one-time trigger, never a timer. See `docs/DESIGN.md` → Opening, pass 2.
 
-| Section | What's there | Feel |
-|---|---|---|
-| Shelter | Tile-roof pavilion, fire pit, lantern, low stucco walls. The only exit is a gap in the north wall. | Warmth and fragile safety |
-| Neighborhood edge | A dead-end street: four stucco houses, cars, dead power lines, a snowman, a swing set. Backyard fences close it in. | Ordinary family life, abandoned |
-| The gate | A wooden gate in the back fence at the cul-de-sac. E to open. | Leaving the last safe-looking place |
-| Woods | A packed trail between tree-covered banks, a frozen pond, an old woodshed, rail-fence remnants, deer and rabbits | Isolation, narrower views |
-| Deeper snowy trail | Deep snow slows you; drifts, dead pines, a fallen log; the fog closes in | Effort, darkness |
-| The house | A lone stucco house in a clearing, warm light in the windows and on the porch. Reaching the porch shows the end card. | A small warm light that feels wrong |
-
-The light is authored by progress along the route, not by a clock: blue hour at the shelter, full dark at the house.
+| Place | What happens |
+|---|---|
+| The seawall | "Arianna?" The canal, a dock and rowboat, a toppled chair and cooler, a fallen street lamp. |
+| The park | A swing creaks ahead; her small prints cross the playground sand: "She was here." |
+| The lane | Her bunny by a broken fence: E, "She wouldn't leave this." Then "Daddy!" from ahead. |
+| The gate | E: locked. E again: Marc climbs it. |
+| The house | Top-right, angled; a figure leaves the lit window; voices inside; "Stay there." |
 
 ## URL options
 
 - `?autostart=1`: skip the start card.
-- `?debug=1`: fps / position / ground type / draw-call overlay.
-- `?dev=1`: keys 1–8 jump to route checkpoints (testing only).
+- `?debug=1`: fps / position / ground / beats / draw-call overlay.
+- `?dev=1`: keys 1–7 jump to the checkpoints (testing only; jumping fires the beats on the way).
 - `?at=x,z`: start position. `?t=20`: fix the hour instead of the authored light.
 - `?quality=low` / `?quality=high`: phones default to low.
 - `?cam=fov,dist,pitch,lead`: camera tuning aid (not for players).
@@ -69,26 +71,31 @@ The light is authored by progress along the route, not by a clock: blue hour at 
 ```
 src/               game code (main.js wires the systems together)
   core/            input, assets, collision, see-through occlusion
-  world/           route.js (the level), procedural builders, ground, textures
-  systems/         player (locomotion), camera, day/night light, footprints, snowfall, wildlife, interactions, audio
+  world/           level.js (the opening), materials.js (the texture library); older builders kept for reference
+  systems/         story (the beat sequence), player (Marc), camera, ambience (dust, leaves, birds), footprints, interactions, audio
   ui/              HUD, CSS
 hub/               visual project hub (not shipped)
 public/assets/models/   game-ready GLB files (built by Blender)
 assets/source/     original downloaded models + license manifest
 assets/blend/      editable .blend sources for every built model
-blender/           build_assets.py (repeatable build), inspect_glb.py, render_sheet.py
-tools/             playtest, capture (hub screenshots and clips), montage, frames, webm-duration, hub-refs, asset tools
+blender/           build_kit.py + kit/ (the opening's assets), build_marc.py (Marc), build_assets.py (older models), inspection helpers
+tools/             playtest, walkthrough, smoke, fetch-polyhaven, fetch-assets, optimize-assets, hub-timings, hub-refs, perf-mobile-sim, montage, capture
 docs/              STATE (current state), DESIGN (decisions and numbers), PLAYTEST, screenshots
 ```
 
 ## Rebuilding assets
 
 ```bash
-npm run fetch-assets
-npm run assets
+node tools/fetch-polyhaven.mjs
+node tools/fetch-assets.mjs
+"C:/Program Files/Blender Foundation/Blender 5.2/blender.exe" --background --factory-startup --python blender/build_kit.py
+node tools/optimize-assets.mjs
 ```
 
-`npm run assets` rebuilds every GLB with Blender 5.2 in the background; append `-- pine-1 palm-2` to rebuild only named models. The script expects Blender at `C:/Program Files/Blender Foundation/Blender 5.2/blender.exe`. No models changed in the opening-route revision.
+- **Downloads:** Poly Haven textures, the HDRI and props, and Poly Pizza vehicles. All are credited in `CREDITS.md`.
+- **`build_kit.py`:** builds the trees, buildings and props into `public/assets/models/kit/`. Pass `foliage`, `buildings` or `props` to rebuild one group.
+- **`blender/build_marc.py`:** builds Marc from his Tripo FBX in `assets/source/marc/`.
+- **`optimize-assets.mjs`:** makes the WebP textures and compresses the models (about 11 MB in all).
 
 ## Automated playtest
 
@@ -96,8 +103,17 @@ npm run assets
 npm run playtest
 ```
 
-Starts a dev server on port 5199 and drives the game in Chromium with real keyboard and pointer input. It covers the start card, the fixed camera, acceleration and stopping, collisions, the route boundaries, the gate, footprints, the full walk to the house, the end card, restart, and an emulated portrait touch phone. Results go to `playtest-output/results.json`; screenshots go to `docs/screenshots/`. Use `--headed` to watch, or `--only=move,route,touch` to run part of it.
+13 checks with real keyboard and pointer input, in Chromium:
+- the start card and audio
+- the fixed camera
+- Marc's walk (no run)
+- collisions
+- the locked gate and the climb
+- a full play-through to the end card, with beat times
+- restart
+- muted play
+- an emulated portrait phone
 
-For hub captures: `node tools/capture.mjs --set=<name>` writes phone and desktop screenshots and motion clips to `hub/media/<name>/`.
+Results go to `playtest-output/results.json`. `node tools/walkthrough.mjs` plays it on an emulated phone, taking screenshots every few seconds.
 
 See `docs/STATE.md` for what works, known issues and next steps, and `docs/DESIGN.md` for the decisions behind the design.

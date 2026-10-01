@@ -6,7 +6,8 @@
 // so they contain the 3D view only (no HUD) and start after loading.
 //
 // Two scene lists: "baseline" drives the old sandbox build (tag baseline-sandbox-2026-09-30);
-// any other set drives the opening-slice route using the checkpoints the game exposes.
+// any other set plays the redesigned opening on an emulated phone (the slice-v1 sets came from the
+// long-route build at tag baseline-opening-route-2026-09-30, whose capture flow is in that tag).
 import { chromium } from 'playwright';
 import { spawn, execSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -62,11 +63,13 @@ async function setKeys(page, keys) {
   for (const k of keys) if (!held.has(k)) { await page.keyboard.down(k); held.add(k); }
 }
 /** Walk toward (x,z) with WASD relative to the camera's yaw (works for the old rotated camera and the fixed one). */
-async function walkTo(page, x, z, { tol = 1.2, timeout = 40000, extra = [] } = {}) {
+async function walkTo(page, x, z, { tol = 1.2, timeout = 40000, extra = [], autoRun = false, stopOn = null, each = null } = {}) {
   const t0 = Date.now(); let lastD = Infinity, lastT = Date.now(), side = 0;
   while (Date.now() - t0 < timeout) {
     const s = await st(page);
-    if (s.arrived) { await setKeys(page, []); return true; }
+    if (s.arrived || s.story?.flags?.stay != null || (stopOn && stopOn(s))) { await setKeys(page, []); return true; }
+    if (each) { await setKeys(page, []); await each(); lastT = Date.now(); } // stand still while a screenshot is taken
+    if (s.frozen || s.traversing) { await setKeys(page, []); await sleep(80); lastT = Date.now(); continue; }
     const dd = Math.hypot(x - s.pos[0], z - s.pos[1]);
     if (dd < lastD - 0.3) { lastD = dd; lastT = Date.now(); }
     if (Date.now() - lastT > 2000) { // stuck: log it, sidestep and retry (like a player would)
@@ -80,6 +83,7 @@ async function walkTo(page, x, z, { tol = 1.2, timeout = 40000, extra = [] } = {
     if (d < tol) { await setKeys(page, []); return true; }
     const f = (dx * F[0] + dz * F[1]) / d, r = (dx * R[0] + dz * R[1]) / d;
     const keys = [...extra];
+    if (autoRun && s.story?.runUnlocked) keys.push('Shift');
     if (f > 0.38) keys.push('w'); if (f < -0.38) keys.push('s');
     if (r > 0.38) keys.push('d'); if (r < -0.38) keys.push('a');
     await setKeys(page, keys);
@@ -155,52 +159,65 @@ try {
       await ctx.close();
     }
   } else {
-    // opening slice: checkpoints come from the game (window.__game.route)
-    const { ctx, page, errors } = await open('phone', '');
-    const route = await page.evaluate(() => window.__game.route.marks);
-    if (want('phone-start')) await shot(page, 'phone-start', 'Start at the shelter.', 'phone');
-    if (want('clip-walk-stop')) {
-      await clip(page, 'clip-walk-stop', 'Motion test: W for 3 s, release, then D/S/A/W 1.1 s each. Keyboard input in a 390×844 emulated phone viewport.', 'phone', () => motionTest(page));
-      await shot(page, 'phone-after-motion', 'Footprints left by the motion test.', 'phone');
-    }
-    await ctx.close();
-    if (want('clip-gait-close')) {
-      // a test-only close camera (?cam=) so the feet and prints can be judged; not the game camera
-      const o = await open('phone', 'cam=34,7,0.6,0&at=-8.5,15');
-      await clip(o.page, 'clip-gait-close', 'Close test camera (?cam=34,7,0.6,0): walk north 2.5 s, jog (Shift) 2 s, release, then D and S. Keyboard input.', 'phone', async () => {
-        await setKeys(o.page, ['w']); await sleep(2500); await setKeys(o.page, ['w', 'Shift']); await sleep(2000);
-        await setKeys(o.page, []); await sleep(1200); await setKeys(o.page, ['d']); await sleep(900); await setKeys(o.page, ['s']); await sleep(1000); await setKeys(o.page, []); await sleep(900);
-      });
-      await shot(o.page, 'phone-gait-close', 'Close test camera: prints left by the gait clip.', 'phone');
-      meta.gait = (await st(o.page)).gait;
-      await o.ctx.close();
-    }
-    for (const m of route) {
-      const name = `phone-${m.id}`;
-      if (!want(name)) continue;
-      const o = await open('phone', `at=${m.x},${m.z}`);
-      await shot(o.page, name, m.note, 'phone');
-      await o.ctx.close();
-    }
-    if (want('desktop-start')) { const o = await open('desktop', ''); await shot(o.page, 'desktop-start', 'Desktop start view (1280×720).', 'desktop'); await o.ctx.close(); }
-    if (want('clip-route')) {
-      // the whole route, walked with keyboard toward each waypoint in turn (recorded in two halves to keep files small)
-      const o = await open('phone', '');
-      const wps = await o.page.evaluate(() => window.__game.route.walk);
-      const half = Math.ceil(wps.length / 2);
-      for (const [part, list] of [['a', wps.slice(0, half)], ['b', wps.slice(half)]]) {
-        await clip(o.page, `clip-route-${part}`, `Route walk part ${part.toUpperCase()}: keyboard steering toward route waypoints (agent-driven, not a human player).`, 'phone', async () => {
-          for (const [x, z, act] of list) {
-            await walkTo(o.page, x, z, { tol: 1.6 });
-            if (act === 'interact') { await o.page.keyboard.down('e'); await sleep(900); await o.page.keyboard.up('e'); await sleep(600); }
-          }
-        }, 1_000_000); // long clips at a lower bitrate to keep the repo small
+    // the redesigned opening, played through on an emulated phone with keyboard input (agent-driven)
+    const o = await open('phone', '');
+    const page = o.page;
+    if (want('phone-search')) await shot(page, 'phone-search', 'Start, mid-search: "Arianna?" and small prints across the mud toward the broken fence.', 'phone');
+    const W = await page.evaluate(() => window.__game.route.walkMud);
+    const beatShots = { log: ['phone-trunk', 'The trunk across the passage; the E prompt teaches stepping over.'], urgency: ['phone-call', 'Arianna calls from ahead; running is revealed as Marc answers.'],
+      split: ['phone-split', 'The split: the muddy direct route (her prints) and the sidewalk curving round.'], reveal: ['phone-reveal', 'Rounding the car: the house through the open gate; the figure has left the window.'],
+      argument: ['phone-yard-voices', 'The yard approach: voices inside (placeholder lines).'], stay: ['phone-stay', '"Stay there." Marc stops; the door opens a crack.'] };
+    const taken = new Set();
+    const snap = async () => {
+      const s = await st(page);
+      for (const [id, [name, note]] of Object.entries(beatShots)) if (s.story.flags[id] != null && !taken.has(id) && want(name)) { taken.add(id); await sleep(id === 'urgency' ? 300 : id === 'argument' ? 400 : id === 'reveal' ? 1300 : 0); await shot(page, name, note, 'phone'); }
+      if (!taken.has('figure') && s.pos[1] < -65.6 && s.story.flags.reveal == null && want('phone-figure')) { taken.add('figure'); await shot(page, 'phone-figure', 'On the road, before rounding the car: a figure in the lit window.', 'phone'); }
+      if (!taken.has('mud') && s.ground === 'mud' && s.pos[1] < -55 && want('phone-mud-tracks')) { taken.add('mud'); await shot(page, 'phone-mud-tracks', 'Running in the mud: slow going; Marc leaves tracks beside her small prints.', 'phone'); }
+    };
+    const walk = async (pts) => {
+      for (const [x, z, act] of pts) {
+        const label = act === 'vault' ? 'Step over' : act === 'bunny' ? 'Pick it up' : null;
+        await walkTo(page, x, z, { tol: act ? 0.3 : 1.1, autoRun: true, stopOn: label ? (s) => s.prompt?.includes(label) : null, each: snap });
+        if (act) {
+          if (act === 'vault' && want('phone-trunk-prompt')) await shot(page, 'phone-trunk-prompt', 'At the trunk: E Step over.', 'phone');
+          if (act === 'bunny' && want('phone-bunny')) await shot(page, 'phone-bunny', 'The bunny by the broken fence and a snapped branch: E Pick it up.', 'phone');
+          await page.keyboard.down('e'); await sleep(90); await page.keyboard.up('e'); await sleep(1300);
+          if (act === 'bunny' && want('phone-bunny-found')) await shot(page, 'phone-bunny-found', '"She wouldn’t leave this." The bunny stays in Marc’s hand.', 'phone');
+        }
+        await snap();
+        if ((await st(page)).story.flags.stay != null) break;
       }
-      await shot(o.page, 'phone-arrival', 'After walking the whole route: the arrival state.', 'phone');
-      meta.routeState = await st(o.page);
-      await o.ctx.close();
+    };
+    const iA = W.findIndex((p) => p[2] === 'bunny') + 1, iB = W.findIndex((p) => p[0] === -2.0 && p[1] === -62.5) + 1;
+    if (want('clip-opening')) {
+      await clip(page, 'clip-opening-a', 'Play-through A: start → trunk → bunny (keyboard, agent steering).', 'phone', () => walk(W.slice(0, iA)), 1_000_000);
+      await clip(page, 'clip-opening-b', 'Play-through B: the call, running, the mud route (keyboard, agent steering).', 'phone', () => walk(W.slice(iA, iB)), 1_000_000);
+      await clip(page, 'clip-opening-c', 'Play-through C: the car, the reveal, the yard, "Stay there." (keyboard, agent steering).', 'phone', async () => { await walk(W.slice(iB)); for (let i = 0; i < 60 && (await st(page)).story.flags.end == null; i++) { await snap(); await sleep(150); } }, 1_000_000);
+    } else await walk(W);
+    for (let i = 0; i < 40 && (await st(page)).modal !== 'end'; i++) await sleep(200);
+    if (want('phone-end')) await shot(page, 'phone-end', 'The end-of-slice card with the time of each beat.', 'phone');
+    meta.playthrough = { route: 'mud', beats: (await st(page)).story.beats, lines: (await st(page)).story.history, endTime: (await st(page)).story.time };
+    if (o.errors.length) meta.errors = o.errors;
+    await o.ctx.close();
+    if (want('clip-sidewalk')) {
+      // the other branch: running the sidewalk round the lot
+      const q = await open('phone', 'at=-3.1,-44.5');
+      await q.page.evaluate(() => window.__game.story.unlockRun());
+      await sleep(400);
+      await clip(q.page, 'clip-sidewalk', 'The sidewalk route, running (Shift): firm ground, full speed, no tracks.', 'phone', async () => {
+        for (const [x, z] of [[1.0, -47.2], [4.2, -49.6], [5.0, -54], [4.2, -58.6], [1.2, -61.6], [-1.6, -63.2], [-1.0, -66.4]]) await walkTo(q.page, x, z, { tol: 1.1, extra: ['Shift'] });
+        await sleep(600);
+      }, 1_000_000);
+      await q.ctx.close();
     }
-    if (errors.length) meta.errors = errors;
+    if (want('clip-walk-stop')) {
+      const q = await open('phone', '');
+      await clip(q.page, 'clip-walk-stop', 'Motion test: W for 3 s (across the first mud patch), release, then D/S/A/W 1.1 s each. Keyboard input, 390×844 emulated phone.', 'phone', () => motionTest(q.page), 1_000_000);
+      await shot(q.page, 'phone-after-motion', 'Tracks left in the mud by the motion test (distance-based, mud only).', 'phone');
+      await q.ctx.close();
+    }
+    if (want('desktop-start')) { const q = await open('desktop', ''); await shot(q.page, 'desktop-start', 'Desktop start view (1280×720).', 'desktop'); await q.ctx.close(); }
+    if (want('desktop-reveal')) { const q = await open('desktop', 'at=-1.2,-66.6'); await sleep(300); await shot(q.page, 'desktop-road', 'Desktop: the road, the car and the house (landscape framing).', 'desktop'); await q.ctx.close(); }
   }
 } finally {
   const prev = fs.existsSync(path.join(OUT, 'capture.json')) ? JSON.parse(fs.readFileSync(path.join(OUT, 'capture.json'))) : null;

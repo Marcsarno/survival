@@ -39,7 +39,7 @@ export class Input {
     };
     const end = (e) => {
       if (e.pointerId !== joyId) return;
-      joyId = null; knob.style.transform = ''; joy.classList.remove('active'); this.touch.joyX = this.touch.joyY = 0;
+      joyId = null; knob.style.transform = ''; joy.classList.remove('active'); joy.style.left = joy.style.top = ''; this.touch.joyX = this.touch.joyY = 0;
     };
     zone.addEventListener('pointerdown', (e) => {
       if (joyId !== null) return;

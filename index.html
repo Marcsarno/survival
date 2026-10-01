@@ -9,17 +9,20 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="vignette"></div>
 
   <div id="loading">
     <div class="load-box">
       <h1>Sarno Survive</h1>
-      <p class="sub">Opening route · test build</p>
+      <p class="sub">The opening · test build</p>
       <div class="bar"><div id="load-fill"></div></div>
       <p id="load-text">Loading…</p>
     </div>
   </div>
 
   <div id="hud" class="hidden">
+    <div id="subs"></div>
+    <div id="hint"></div>
     <div id="prompt" class="hidden"></div>
     <div id="toasts"></div>
     <div id="fade"></div>
@@ -32,47 +35,46 @@
     <div id="joy"><div id="joy-knob"></div></div>
     <div id="touch-buttons">
       <button data-act="interact" class="tb big">E</button>
-      <button data-act="jog" class="tb" title="Jog">🏃</button>
-      <button data-act="lantern" class="tb" title="Lantern">🏮</button>
     </div>
   </div>
 
   <div id="help" class="hidden">
     <div class="help-box scrollable">
       <h2>Sarno Survive</h2>
-      <p class="lede">Opening route test. Leave the shelter and walk north to the house in the woods.</p>
+      <p class="lede">Opening test. Marc is searching for his daughter, Arianna. Lines are text only for now.</p>
       <div class="cols">
         <div class="kbd-help">
           <h3>Keyboard</h3>
           <ul>
-            <li><b>WASD / arrows</b> walk (W is north) · hold <b>Shift</b> to jog</li>
-            <li><b>E</b> interact · <b>L</b> lantern</li>
-            <li><b>Esc</b> pause · <b>R</b> restart the route</li>
+            <li><b>WASD / arrows</b> walk (W is up-screen)</li>
+            <li><b>E</b> interact (pick up, open, climb)</li>
+            <li><b>Esc</b> pause · <b>R</b> restart</li>
           </ul>
         </div>
         <div class="touch-help">
           <h3>Touch</h3>
           <ul>
             <li>Put your thumb down anywhere on the left side and drag to walk</li>
-            <li><b>E</b> interact · 🏃 jog on/off · 🏮 lantern</li>
+            <li><b>E</b> interact</li>
           </ul>
         </div>
       </div>
-      <p class="credits">Test build. Stand-in character and graybox scenery. Models: Quaternius (CC0), Poly by Google (CC BY 3.0), and Blender-built pieces. See CREDITS.md.</p>
+      <p class="credits">Test build. Stand-in character and graybox scenery. Marc: Tripo model. Textures and props: Poly Haven (CC0). Vehicles and boat: Quaternius, Kay Lousberg (CC0), Poly by Google and others (CC BY). Trees, buildings and props built in Blender. See CREDITS.md.</p>
       <div class="help-actions">
         <button id="btn-start" class="primary">Start</button>
-        <button id="btn-restart">Restart route</button>
+        <button id="btn-restart">Restart</button>
       </div>
     </div>
   </div>
 
   <div id="endcard" class="hidden">
     <div class="help-box">
-      <h2>You reached the house.</h2>
-      <p class="lede">End of the opening route test. What happens at the door is later work.</p>
-      <p class="mute">Walk time <b id="end-time">0:00</b></p>
+      <h2>End of the opening test.</h2>
+      <p class="lede">What happens at the door is later work.</p>
+      <p class="mute">Time <b id="end-time">0:00</b></p>
+      <ul id="end-beats" class="beats"></ul>
       <div class="help-actions">
-        <button id="btn-again" class="primary">Walk it again</button>
+        <button id="btn-again" class="primary">Play it again</button>
       </div>
     </div>
   </div>

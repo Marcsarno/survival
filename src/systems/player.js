@@ -1,210 +1,250 @@
 import * as THREE from 'three';
 import { clamp, lerp, smoothstep } from '../core/util.js';
-import { groundHeight } from '../world/ground.js';
-import { PAL } from '../palette.js';
 import { Assets } from '../core/assets.js';
 
-// Stand-in locomotion for Marc. The Quaternius Adventurer is a placeholder until a final model exists;
-// re-measure and retune when it is replaced.
+// Marc: the Tripo model with its Mixamo-style rig (public/assets/models/marc.glb, blender/build_marc.py).
 //
-// - Speed comes from the ground under the feet (pavement > packed trail > snow > deep snow).
-//   Jog (Shift / touch toggle) is a modest step up, not a sprint.
-// - Velocity accelerates and decelerates; sharp direction changes slow you until you have turned.
-// - Collisions slide along walls, and the velocity keeps only what actually moved, so no momentum
-//   builds against a wall.
-// - Idle, Walk and Run play together with speed-driven weights. Walk and Run are phase-locked and
-//   play at the rate whose stride matches the ground speed. Each clip's stride and foot-contact
-//   timing are measured from the foot bones at load time, which keeps foot sliding low.
-// - Footprints are footfall-driven: when the gait phase passes a measured contact point, a print is
-//   placed under that foot bone. onFootfall() is the single integration point; a final rig with
-//   proper contact events can call it directly. A distance-based stepper is kept as a fallback
-//   when the foot bones are missing.
-export const SPEED = { paved: 3.2, trail: 2.95, snow: 2.6, ice: 2.4, deepTrail: 2.3, deep: 1.95 };
-const JOG = 1.42, ACCEL = 8, DECEL = 11, TURN_RATE = 10, RADIUS = 0.34, HEIGHT = 1.8;
-const RUN_BLEND = [2.2, 3.4];   // m/s: walk → run blend range
+// - One pace: a methodical walk at the walk clip's own speed (about 1.25 m/s), a little slower on
+//   sand. No run. Slow to start, slow to turn: he is searching, and it should feel heavy.
+// - The clips carry root motion. At load the Hips position track is made in-place (the forward part
+//   is removed; the bob and sway stay), and the game moves Marc itself.
+// - Idle is the first frame of the Frustrated clip (a neutral stand) plus breathing and a head that
+//   turns toward things that matter (lookAt()).
+// - The gate: tryGate() plays Frustrated (a kick at the latch while the gate rattles); climbGate()
+//   plays the first part of Climb (hands up, haul up) while Marc moves onto the gate line, then he
+//   drops down the far side.
+// - Step sounds come from foot contacts measured in the walk clip. Prints: distance-based, on sand
+//   and leaf litter only.
+const HEIGHT = 1.8, ACCEL = 3.2, DECEL = 5.5, TURN_RATE = 4.2, RADIUS = 0.32;
+const PACE = { concrete: 1.3, leaves: 1.22, grass: 1.22, sand: 1.05 };
+const PRINT_STEP = 0.66;
 
 export class Player {
   constructor(game) {
     this.game = game;
-    const { root, mixer, actions } = game.assets.rigged('player');
+    const { root, mixer, actions } = game.assets.rigged('marc');
     this.root = root; this.mixer = mixer; this.actions = actions;
-    Assets.fitHeight(root, mixer, actions, HEIGHT);
-    // The Adventurer rig faces -z. An inner pivot turns it around so yaw 0 faces +z, the direction
-    // used by atan2(dir.x, dir.z). (The baseline build skipped this, so Marc walked backwards.)
-    this.pivot = new THREE.Group(); this.pivot.rotation.y = Math.PI; this.pivot.add(root);
-    this.obj = new THREE.Group(); this.obj.add(this.pivot); game.scene.add(this.obj);
-    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
-    this.feet = { L: root.getObjectByName('FootL'), R: root.getObjectByName('FootR') };
-    this.lantern = game.assets.clone('lantern');
-    this.lanternLight = new THREE.PointLight(PAL.lanternLight, 0, 13, 1.6);
-    this.lanternLight.position.set(0, -0.22, 0);
-    this.lantern.add(this.lanternLight);
-    this.attach(this.lantern, root.getObjectByName('WristL'), [0, -0.05, 0.03]);
-    // soft fill so the character reads at dusk (tiny radius, no shadows)
-    this.fill = new THREE.PointLight('#b8c8ff', 0, 7, 1.6); game.scene.add(this.fill);
-    // faint ground ring that stays visible through canopies
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.48, 24), new THREE.MeshBasicMaterial({ color: '#dfe8ff', transparent: true, opacity: 0.22, depthTest: false }));
-    ring.rotation.x = -Math.PI / 2; ring.renderOrder = 10; ring.position.y = 0.05; this.obj.add(ring);
-
+    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.82; o.material.metalness = 0; } } });
+    this.bone = (n) => root.getObjectByName('mixamorig' + n) || root.getObjectByName('mixamorig:' + n);
+    this.hips = this.bone('Hips'); this.head = this.bone('Head'); this.neck = this.bone('Neck'); this.spine = this.bone('Spine1');
+    this.hand = this.bone('LeftHand'); this.feet = { L: this.bone('LeftFoot'), R: this.bone('RightFoot') };
+    // the rig faces +z, the direction atan2(dir.x, dir.z) uses (checked against a close camera)
+    this.obj = new THREE.Group(); this.obj.add(root); game.scene.add(this.obj);
     this.pos = this.obj.position; this.vel = new THREE.Vector3(); this.yaw = 0; this.speed = 0;
-    this.lanternOn = false; this.frozen = false;
-    this.stepAcc = 0; this.side = 1; this.footfalls = 0; this.phase = 0;
-    this.gait = { Walk: this.measureGait('Walk'), Run: this.measureGait('Run') };
-    this.footDriven = !!(this.feet.L && this.feet.R && this.gait.Walk.measured && this.gait.Run.measured);
-    for (const n of ['Idle', 'Walk', 'Run']) { const a = actions[n]; a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.setEffectiveWeight(n === 'Idle' ? 1 : 0); a.play(); }
+
+    // clips: measure the walk's natural speed and contacts, then make every clip in-place
+    this.clipInfo = {};
+    for (const [n, a] of Object.entries(actions)) this.clipInfo[n] = this.measure(a);
+    Assets.fitHeight(root, mixer, actions, HEIGHT, 'Frustrated');
+    this.scale = root.scale.x;
+    for (const [n, a] of Object.entries(actions)) this.inPlace(a.getClip(), this.clipInfo[n], n === 'Climb' ? 0.78 : 1);   // the climb was made for a ledge about 2.2 m high; the gate is 1.75 m
+    this.walkSpeed = this.clipInfo.Walk.speed * this.scale;          // m/s at timeScale 1
+    this.contacts = this.footContacts(actions.Walk);
+
+    const A = actions;
+    A.Idle = mixer.clipAction(poseClip(A.Frustrated.getClip(), 0, 'Idle'), root);   // the neutral stand that opens Frustrated
+    for (const n of ['Idle', 'Walk']) { const a = A[n]; a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.play(); a.setEffectiveWeight(n === 'Idle' ? 1 : 0); }
+    A.Idle.setEffectiveTimeScale(0.15);
+    for (const n of ['Frustrated', 'Climb']) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; }
+    this.frozen = false; this.carrying = null; this.seq = null; this.look = null; this.lookW = 0;
+    this.footfalls = 0; this.stepAcc = 0; this.printSide = 1; this.lastGround = 'concrete'; this.walkPrev = 0;
+    this.breath = 0;
   }
 
-  attach(obj, bone, p = [0, 0, 0], r = [0, 0, 0]) {
-    const ws = new THREE.Vector3(); this.root.updateMatrixWorld(true); bone.getWorldScale(ws);
-    obj.scale.setScalar(1 / ws.x); obj.position.set(p[0] / ws.x, p[1] / ws.x, p[2] / ws.x); obj.rotation.set(...r);
-    bone.add(obj);
+  /** Root motion of a clip in the hips track: which axis is up and which are horizontal, and the forward speed. */
+  measure(action) {
+    const clip = action.getClip(), tr = clip.tracks.find((t) => /Hips\.position$/.test(t.name));
+    if (!tr) return { speed: 1, up: 1, horiz: [0, 2] };
+    const v = tr.values, n = v.length / 3, first = [v[0], v[1], v[2]], last = [v[(n - 1) * 3], v[(n - 1) * 3 + 1], v[(n - 1) * 3 + 2]];
+    const mean = [0, 1, 2].map((k) => { let s = 0; for (let i = 0; i < n; i++) s += v[i * 3 + k]; return s / n; });
+    // the up axis: the one the hips sit high on at the start (feet at 0); horizontal: the other two
+    const up = [0, 1, 2].reduce((a, k) => (Math.abs(first[k]) > Math.abs(first[a]) && Math.abs(mean[k]) > 0.2 ? k : a), 1);
+    const horiz = [0, 1, 2].filter((k) => k !== up);
+    const d = Math.hypot(...horiz.map((k) => last[k] - first[k]));
+    return { speed: d / clip.duration, up, horiz, first, track: tr.name };
   }
 
-  /**
-   * Measure an in-place loop from its foot bones: the planted (lower) foot's speed backward is the
-   * clip's natural ground speed (median over the loop); `cycle` is the distance covered per loop; `contact` is the loop
-   * phase (0..1) at which the left foot plants (the right foot plants half a cycle later).
-   */
-  measureGait(name) {
-    const a = this.actions[name], { L, R } = this.feet;
-    const dur = a?.getClip().duration || 1;
-    const fallback = name === 'Run' ? { speed: 4.2, dur, cycle: 4.2 * dur, contact: 0, measured: false } : { speed: 1.4, dur, cycle: 1.4 * dur, contact: 0, measured: false };
-    if (!a || !L || !R) return fallback;
-    const N = 120, pl = new THREE.Vector3(), pr = new THREE.Vector3();
-    for (const x of Object.values(this.actions)) x.stop();
-    a.reset().play(); a.setEffectiveWeight(1);
-    let prev = null, contact = null; const v = [];
-    for (let i = 0; i <= N; i++) {
-      a.time = (i / N) * dur; this.mixer.update(0); this.root.updateMatrixWorld(true);
-      L.getWorldPosition(pl); R.getWorldPosition(pr);
-      const stance = pl.y < pr.y ? 'L' : 'R', z = stance === 'L' ? pl.z : pr.z;
-      if (prev && prev.stance === stance) v.push(Math.abs(z - prev.z) / (dur / N));
-      if (prev && prev.stance === 'R' && stance === 'L' && contact === null) contact = i / N;
-      prev = { stance, z };
+  /** Remove horizontal root motion (keep the bob). Walk keeps its side-to-side sway around the trend. rise scales the vertical travel. */
+  inPlace(clip, info, rise = 1) {
+    const tr = clip.tracks.find((t) => /Hips\.position$/.test(t.name)); if (!tr) return;
+    const v = tr.values, n = v.length / 3, times = tr.times, T = times[n - 1] || 1;
+    if (rise !== 1) { const y0 = v[info.up]; for (let i = 0; i < n; i++) v[i * 3 + info.up] = y0 + (v[i * 3 + info.up] - y0) * rise; }
+    for (const k of info.horiz) {
+      const a = v[k], b = v[(n - 1) * 3 + k];
+      for (let i = 0; i < n; i++) v[i * 3 + k] -= a + (b - a) * (times[i] / T);
     }
-    a.stop();
-    // median speed of the planted foot (robust to the frames where the feet swap)
-    v.sort((p, q) => p - q);
-    const speed = v.length ? v[Math.floor(v.length / 2)] : 0;
-    if (!(speed > 0.3 && speed < 12)) return fallback;
-    return { speed, dur, cycle: speed * dur, contact: contact ?? 0, measured: true };
+  }
+
+  /** Foot contact times in the (in-place) walk: when each foot is lowest. */
+  footContacts(action) {
+    const clip = action.getClip(), N = 72, L = this.feet.L, R = this.feet.R, out = [];
+    if (!L || !R) return [0, clip.duration / 2];
+    const p = new THREE.Vector3(), hl = [], hr = [];
+    for (const a of Object.values(this.actions)) a.stop();
+    action.reset().play(); action.setEffectiveWeight(1);
+    for (let i = 0; i < N; i++) { action.time = (i / N) * clip.duration; this.mixer.update(0); this.root.updateMatrixWorld(true); hl.push(L.getWorldPosition(p).y); hr.push(R.getWorldPosition(p).y); }
+    action.stop();
+    for (const h of [hl, hr]) { let best = 0; for (let i = 0; i < N; i++) if (h[i] < h[best]) best = i; out.push((best / N) * clip.duration); }
+    return out;
   }
 
   setPosition(x, z, yaw) {
-    this.pos.set(x, groundHeight(x, z), z); this.vel.set(0, 0, 0); this.speed = 0; this.stepAcc = 0;
+    this.pos.set(x, 0, z); this.vel.set(0, 0, 0); this.speed = 0; this.seq = null; this.stepAcc = 0;
     if (yaw !== undefined) { this.yaw = yaw; this.obj.rotation.y = yaw; }
+    for (const n of ['Frustrated', 'Climb']) this.actions[n].stop();
+  }
+
+  carry(obj) {
+    this.carrying = obj;
+    const ws = new THREE.Vector3(); this.root.updateMatrixWorld(true); this.hand.getWorldScale(ws);
+    obj.scale.setScalar(1 / ws.x); obj.position.set(0, -0.06 / ws.x, 0.05 / ws.x); obj.rotation.set(Math.PI, 0, 0.4);
+    this.hand.add(obj);
+  }
+
+  /** Look at a world point (x, z) or stop (null). The head and neck turn, limited. */
+  lookAt(p) { this.look = p; }
+
+  // ---------------------------------------------------------------- the gate
+  tryGate(onKick, onDone) {
+    const A = this.actions, f = A.Frustrated;
+    this.seq = { kind: 'try', t: 0, dur: f.getClip().duration * 0.92, onKick, onDone, kicked: false };
+    f.reset(); f.setEffectiveTimeScale(1); f.setEffectiveWeight(1); f.fadeIn(0.25); f.play();
+  }
+  climbGate(gateZ, gateX, dir, onTop, onDone) {
+    const A = this.actions, c = A.Climb, clip = c.getClip();
+    const t0 = clip.duration * (8 / 84), t1 = clip.duration * (47 / 84);
+    this.yaw = dir < 0 ? Math.PI : 0; this.obj.rotation.y = this.yaw;
+    this.seq = { kind: 'climb', t: 0, dur: (t1 - t0) / 0.95, t0, t1, from: new THREE.Vector3(gateX, 0, gateZ - dir * 0.55), over: new THREE.Vector3(gateX, 0, gateZ), to: new THREE.Vector3(gateX, 0, gateZ + dir * 0.85), onTop, onDone, phase: 'up' };
+    this.pos.copy(this.seq.from); this.vel.set(0, 0, 0);
+    c.reset(); c.time = t0; c.setEffectiveTimeScale(0.95); c.setEffectiveWeight(1); c.fadeIn(0.2); c.play();
   }
 
   update(dt, input, cam) {
-    const g = this.game;
-    // ---- desired motion (screen-relative with a fixed camera: up = north)
-    const mv = this.frozen || g.ui.modal ? { x: 0, y: 0, len: 0 } : input.moveVector();
-    const { forward, right } = cam.basis();
-    const dir = new THREE.Vector3().addScaledVector(right, mv.x).addScaledVector(forward, -mv.y);
-    const hasInput = mv.len > 0.12;
-    if (hasInput) dir.normalize();
-    const ground = g.groundAt(this.pos.x, this.pos.z);
-    const jog = hasInput && (input.down('shift') || input.touch.jogToggle);
-    let target = hasInput ? SPEED[ground] * (jog ? (ground.startsWith('deep') ? 1.25 : JOG) : 1) * Math.min(1, (mv.len - 0.12) / 0.7) : 0;
-    if (hasInput) {
-      // turning: moving against the way you face is slow until you have turned
-      const want = Math.atan2(dir.x, dir.z);
-      const diff = Math.abs(wrap(want - this.yaw));
-      target *= 0.35 + 0.65 * Math.max(0, Math.cos(diff * 0.9));
-      // uphill costs a little
-      const ahead = groundHeight(this.pos.x + dir.x * 0.6, this.pos.z + dir.z * 0.6) - this.pos.y;
-      target *= clamp(1 - Math.max(0, ahead / 0.6) * 0.9, 0.7, 1);
-      this.yaw = turnToward(this.yaw, want, TURN_RATE * dt, 1 - Math.exp(-dt * 14));
-    }
-    // ---- accelerate toward the target velocity
-    const tvx = dir.x * target, tvz = dir.z * target;
-    const dvx = tvx - this.vel.x, dvz = tvz - this.vel.z, dl = Math.hypot(dvx, dvz);
-    const maxDv = (target > Math.hypot(this.vel.x, this.vel.z) ? ACCEL : DECEL) * dt;
-    if (dl > maxDv) { this.vel.x += (dvx / dl) * maxDv; this.vel.z += (dvz / dl) * maxDv; } else { this.vel.x = tvx; this.vel.z = tvz; }
-    if (!hasInput && Math.hypot(this.vel.x, this.vel.z) < 0.05) this.vel.set(0, 0, 0);
-    // ---- move with collision; keep only the velocity that actually happened
-    const ox = this.pos.x, oz = this.pos.z;
-    const steps = Math.max(1, Math.ceil((Math.hypot(this.vel.x, this.vel.z) * dt) / 0.2));
-    let x = ox, z = oz;
-    for (let i = 0; i < steps; i++) {
-      let r = g.col.resolve(x + (this.vel.x * dt) / steps, z + (this.vel.z * dt) / steps, RADIUS);
-      r = g.clampToRoute(r.x, r.z, RADIUS);
-      x = r.x; z = r.z;
-    }
-    const moved = Math.hypot(x - ox, z - oz);
-    if (dt > 0) { this.vel.x = (x - ox) / dt; this.vel.z = (z - oz) / dt; }
-    this.pos.x = x; this.pos.z = z; this.pos.y = groundHeight(x, z);
-    if (!hasInput && moved > 0.01) this.yaw = turnToward(this.yaw, Math.atan2(this.vel.x, this.vel.z), TURN_RATE * dt * 0.5, 0.2);
-    this.obj.rotation.y = this.yaw;
-    const inst = dt > 0 ? moved / dt : 0;
-    this.speed += (inst - this.speed) * (1 - Math.exp(-dt * 12)); // smoothed for animation weights
-
-    // ---- animation: phase-locked walk/run blend at the stride that matches ground speed
-    const v = this.speed, W = this.gait.Walk, Rn = this.gait.Run, a = this.actions;
-    const wr = smoothstep(RUN_BLEND[0], RUN_BLEND[1], v), move = smoothstep(0.06, 0.5, v);
-    const cycle = lerp(W.cycle, Rn.cycle, wr);             // meters per loop at this blend
-    const prevPhase = this.phase;
-    this.phase = (this.phase + (v * dt) / cycle) % 1;      // one shared gait phase
-    a.Walk.time = ((this.phase + W.contact) % 1) * W.dur;  // phase 0 = left foot plants, in both clips
-    a.Run.time = ((this.phase + Rn.contact) % 1) * Rn.dur;
-    a.Walk.setEffectiveTimeScale(0); a.Run.setEffectiveTimeScale(0);  // time is driven directly
-    a.Idle.setEffectiveWeight(1 - move); a.Walk.setEffectiveWeight(move * (1 - wr)); a.Run.setEffectiveWeight(move * wr);
-    this.mixer.update(dt);
-
-    // ---- footprints
-    if (this.footDriven) {
-      // contacts at phase 0 (left) and 0.5 (right); handle wrap-around and several contacts in one long frame
-      const travelled = (v * dt) / cycle;
-      if (v > 0.2 && travelled > 0) {
-        for (const [ph, side] of [[0, -1], [0.5, 1]]) {
-          const d = ((ph - prevPhase) % 1 + 1) % 1;
-          if (d > 0 && d <= travelled) this.footfallFromBone(side, ground, v > 3.3);
+    const g = this.game, A = this.actions;
+    if (this.seq) this.updateSeq(dt);
+    else {
+      const mv = this.frozen || g.ui.modal ? { x: 0, y: 0, len: 0 } : input.moveVector();
+      const dir = new THREE.Vector3(mv.x, 0, mv.y);
+      const hasInput = mv.len > 0.12;
+      if (hasInput) dir.normalize();
+      const ground = g.groundAt(this.pos.x, this.pos.z);
+      let target = hasInput ? PACE[ground] * Math.min(1, 0.35 + (mv.len - 0.12) / 0.6) : 0;
+      if (hasInput) {
+        const want = Math.atan2(dir.x, dir.z), diff = Math.abs(wrap(want - this.yaw));
+        target *= 0.25 + 0.75 * Math.max(0, Math.cos(diff * 0.85));
+        this.yaw = turnToward(this.yaw, want, TURN_RATE * dt, 1 - Math.exp(-dt * 7));
+      }
+      const tvx = dir.x * target, tvz = dir.z * target;
+      const dvx = tvx - this.vel.x, dvz = tvz - this.vel.z, dl = Math.hypot(dvx, dvz);
+      const maxDv = (target > Math.hypot(this.vel.x, this.vel.z) ? ACCEL : DECEL) * dt;
+      if (dl > maxDv) { this.vel.x += (dvx / dl) * maxDv; this.vel.z += (dvz / dl) * maxDv; } else { this.vel.x = tvx; this.vel.z = tvz; }
+      if (!hasInput && Math.hypot(this.vel.x, this.vel.z) < 0.04) this.vel.set(0, 0, 0);
+      const ox = this.pos.x, oz = this.pos.z;
+      let x = ox, z = oz;
+      const steps = Math.max(1, Math.ceil((Math.hypot(this.vel.x, this.vel.z) * dt) / 0.15));
+      for (let i = 0; i < steps; i++) { let r = g.col.resolve(x + (this.vel.x * dt) / steps, z + (this.vel.z * dt) / steps, RADIUS); r = g.clampToRoute(r.x, r.z, RADIUS); x = r.x; z = r.z; }
+      const moved = Math.hypot(x - ox, z - oz);
+      if (dt > 0) { this.vel.x = (x - ox) / dt; this.vel.z = (z - oz) / dt; }
+      this.pos.set(x, 0, z);
+      this.speed += ((dt > 0 ? moved / dt : 0) - this.speed) * (1 - Math.exp(-dt * 10));
+      this.lastGround = ground;
+      // prints on soft ground
+      if ((ground === 'sand' || ground === 'leaves') && moved > 0) {
+        this.stepAcc += moved;
+        while (this.stepAcc >= PRINT_STEP) {
+          this.stepAcc -= PRINT_STEP; this.printSide *= -1;
+          const ux = (x - ox) / moved, uz = (z - oz) / moved, yaw = Math.atan2(ux, uz);
+          g.footprints.add(x + Math.cos(yaw) * 0.11 * this.printSide, 0.0, z - Math.sin(yaw) * 0.11 * this.printSide, yaw, ground === 'sand' ? 0.9 : 0.55, this.printSide, 1.05);
         }
       }
-    } else if (moved > 0) {
-      // fallback: distance-based, one print per half cycle
-      const ux = (x - ox) / moved, uz = (z - oz) / moved, step = cycle / 2;
-      this.stepAcc += moved;
-      while (this.stepAcc >= step) { this.stepAcc -= step; this.side *= -1; const along = moved - this.stepAcc; this.onFootfall(this.side, ox + ux * along, oz + uz * along, Math.atan2(ux, uz), ground, v > 3.3); }
+      // blend idle and walk; walk plays at the rate that matches the ground speed
+      const w = smoothstep(0.05, 0.45, this.speed);
+      A.Walk.setEffectiveWeight(w); A.Idle.setEffectiveWeight(1 - w);
+      A.Walk.setEffectiveTimeScale(Math.max(0.3, this.speed / this.walkSpeed));
+      // footsteps on contacts
+      const wt = A.Walk.time;
+      if (w > 0.5) for (const c of this.contacts) if ((this.walkPrev < c && wt >= c) || (wt < this.walkPrev && (c > this.walkPrev || c <= wt))) { g.audio?.step(ground); this.footfalls++; }
+      this.walkPrev = wt;
     }
-
-    // ---- lantern and night fill
-    if ((input.hit('l') || input.tHit('lantern')) && !g.ui.modal) { this.lanternOn = !this.lanternOn; g.audio?.click(); }
-    this.lantern.visible = this.lanternOn;
-    const night = g.daynight.nightness;
-    this.fill.intensity = 1.5 + 4 * night;
-    this.fill.position.set(this.pos.x, this.pos.y + 2.3, this.pos.z + 1.6);
-    const flick = 1 + Math.sin(performance.now() * 0.013) * 0.05 + Math.sin(performance.now() * 0.031) * 0.04;
-    this.lanternLight.intensity = this.lanternOn ? (6 + 12 * night) * flick : 0;
-    this.lantern.traverse((o) => { if (o.isMesh && o.material.name === 'LanternGlow') o.material.emissiveIntensity = this.lanternOn ? 3 : 0.05; });
+    this.obj.rotation.y = this.yaw;
+    // undo last frame's procedural offsets first: the mixer does not rewrite a bone whose pose is unchanged
+    for (const m of this._mods || []) m.bone.quaternion.copy(m.base);
+    this.mixer.update(dt);
+    this.postPose(dt);
   }
 
-  footfallFromBone(side, ground, jogging) {
-    const bone = side < 0 ? this.feet.L : this.feet.R, p = new THREE.Vector3();
-    this.obj.updateMatrixWorld(true); bone.getWorldPosition(p);
-    // the ankle bone sits behind the middle of the sole: nudge the print a little toward the toes
-    this.onFootfall(side, p.x + Math.sin(this.yaw) * 0.06, p.z + Math.cos(this.yaw) * 0.06, this.yaw, ground, jogging, true);
+  updateSeq(dt) {
+    const s = this.seq, A = this.actions, g = this.game;
+    s.t += dt;
+    A.Walk.setEffectiveWeight(0);
+    if (s.kind === 'try') {
+      A.Idle.setEffectiveWeight(Math.max(0, 1 - s.t / 0.25) * 0 + 0.0001);
+      if (!s.kicked && s.t > s.dur * 0.3) { s.kicked = true; s.onKick?.(); }
+      if (s.t >= s.dur) { A.Frustrated.fadeOut(0.35); A.Idle.setEffectiveWeight(1); this.seq = null; s.onDone?.(); }
+      return;
+    }
+    // climb: up the gate (clip), forward onto the gate line (game); then the drop
+    if (s.phase === 'up') {
+      const k = Math.min(1, s.t / s.dur), e = k * k * (3 - 2 * k);
+      this.pos.lerpVectors(s.from, s.over, e); this.pos.y = 0;
+      A.Idle.setEffectiveWeight(0.0001);
+      if (k >= 1) {
+        // keep the body where it is while the pose changes, then fall to the ground on the far side
+        this.root.updateMatrixWorld(true); const hy = this.hips.getWorldPosition(new THREE.Vector3()).y;
+        s.phase = 'drop'; s.t = 0; s.hipsTop = hy; s.y0 = null;
+        A.Climb.fadeOut(0.3); A.Idle.reset().play(); A.Idle.setEffectiveWeight(1); A.Idle.fadeIn(0.3);
+        s.onTop?.();
+      }
+      return;
+    }
+    if (s.phase === 'drop') {
+      if (s.y0 == null) { // after one frame in the new pose: lift Marc so the hips start where they were
+        this.root.updateMatrixWorld(true); const hy = this.hips.getWorldPosition(new THREE.Vector3()).y - this.pos.y;
+        s.y0 = Math.max(0, s.hipsTop - hy); s.t = 0;
+      }
+      const D = 0.55, k = Math.min(1, s.t / D);
+      this.pos.lerpVectors(s.over, s.to, Math.sin(k * Math.PI / 2));
+      this.pos.y = s.y0 * (1 - k * k) - (k > 0.85 ? Math.sin((k - 0.85) / 0.15 * Math.PI) * 0.12 : 0);
+      if (k >= 1) { this.pos.y = 0; this.seq = null; g.audio?.step('grass'); g.audio?.thud?.(); s.onDone?.(); }
+    }
   }
 
-  /**
-   * A foot touched the ground. side: -1 left, +1 right. atFoot: (x, z) is already the foot position;
-   * otherwise it is the body position and the print is offset sideways by half the stance width.
-   */
-  onFootfall(side, x, z, yaw, ground, jogging, atFoot = false) {
-    const g = this.game;
-    let fx = x, fz = z;
-    if (!atFoot) { fx += Math.cos(yaw) * 0.13 * side + Math.sin(yaw) * 0.12; fz += -Math.sin(yaw) * 0.13 * side + Math.cos(yaw) * 0.12; }
-    const deep = ground.startsWith('deep');
-    const strength = ground === 'paved' ? 0.3 : ground === 'ice' ? 0.25 : deep ? 1.25 : ground === 'trail' ? 0.85 : 1;
-    g.footprints.add(fx, groundHeight(fx, fz), fz, yaw, strength, side, deep ? 1.18 : 1);
-    g.audio?.step(ground === 'paved' || ground === 'ice' ? 'paved' : 'snow', jogging);
-    this.footfalls++;
+  /** After the mixer: breathing, the head turning toward what matters. */
+  postPose(dt) {
+    this.breath += dt;
+    this._mods = [this.spine, this.neck, this.head].filter(Boolean).map((bone) => ({ bone, base: bone.quaternion.clone() }));
+    const idle = this.actions.Idle.getEffectiveWeight();
+    if (this.spine) this.spine.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.sin(this.breath * 1.6) * 0.02 * idle));
+    let wantW = 0, yawOff = 0, pitch = 0;
+    if (this.look && !this.seq) {
+      const dx = this.look.x - this.pos.x, dz = this.look.z - this.pos.z, d = Math.hypot(dx, dz);
+      const rel = wrap(Math.atan2(dx, dz) - this.yaw);
+      if (d < (this.look.r || 9) && Math.abs(rel) < 1.9) { wantW = 1; yawOff = clamp(rel, -1.1, 1.1); pitch = clamp(0.35 - d * 0.04, 0, 0.35); }
+    }
+    this.lookW += (wantW - this.lookW) * (1 - Math.exp(-dt * 2.5));
+    this.lookYaw = lerp(this.lookYaw || 0, yawOff, 1 - Math.exp(-dt * 3));
+    if (this.head && this.lookW > 0.01) {
+      // rotate about the world up axis, split between neck and head
+      const q = new THREE.Quaternion();
+      for (const [b, f] of [[this.neck, 0.4], [this.head, 0.6]]) {
+        if (!b) continue;
+        const parentQ = b.parent.getWorldQuaternion(new THREE.Quaternion());
+        const upLocal = new THREE.Vector3(0, 1, 0).applyQuaternion(parentQ.clone().invert());
+        q.setFromAxisAngle(upLocal.normalize(), this.lookYaw * f * this.lookW);
+        b.quaternion.premultiply(q);
+        b.updateMatrixWorld(true);
+      }
+    }
   }
 }
 
+/** A two-key clip that holds a clip's pose at time t (a still pose to blend with). */
+function poseClip(clip, t, name) {
+  const tracks = clip.tracks.map((tr) => {
+    const it = tr.createInterpolant(), v = Array.from(it.evaluate(t));
+    return new tr.constructor(tr.name, [0, 1], [...v, ...v]);
+  });
+  return new THREE.AnimationClip(name, 1, tracks);
+}
 function wrap(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }
-/** turn toward `to` by at most `maxStep` radians, eased by factor k */
-function turnToward(from, to, maxStep, k) {
-  const d = wrap(to - from);
-  return from + clamp(d * k, -maxStep, maxStep);
-}
+function turnToward(from, to, maxStep, k) { const d = wrap(to - from); return from + clamp(d * k, -maxStep, maxStep); }

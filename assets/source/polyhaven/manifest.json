@@ -1,0 +1,456 @@
+[
+  {
+    "id": "forest_leaves_02",
+    "type": "texture",
+    "name": "Forest Leaves 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/forest_leaves_02",
+    "size_m": [
+      3.0009725093841553,
+      3.0009801387786865
+    ]
+  },
+  {
+    "id": "forrest_ground_01",
+    "type": "texture",
+    "name": "Forest Ground 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/forrest_ground_01",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "brown_mud_leaves_01",
+    "type": "texture",
+    "name": "Brown Mud Leaves 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/brown_mud_leaves_01",
+    "size_m": [
+      1.2999998331069946,
+      1.2999998331069946
+    ]
+  },
+  {
+    "id": "playground_sand",
+    "type": "texture",
+    "name": "Playground Sand",
+    "authors": [
+      "eye-candy.xyz"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/playground_sand",
+    "size_m": [
+      2.0699996948242188,
+      2.0699996948242188
+    ]
+  },
+  {
+    "id": "park_dirt",
+    "type": "texture",
+    "name": "Park Dirt",
+    "authors": [
+      "Christopher Melani"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/park_dirt",
+    "size_m": [
+      3,
+      3
+    ]
+  },
+  {
+    "id": "concrete_pavement",
+    "type": "texture",
+    "name": "Concrete Pavement",
+    "authors": [
+      "Charlotte Baglioni"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/concrete_pavement",
+    "size_m": [
+      1.8000000715255737,
+      1.8000000715255737
+    ]
+  },
+  {
+    "id": "worn_concrete_floor",
+    "type": "texture",
+    "name": "Worn Concrete Floor",
+    "authors": [
+      "Dimitrios Savva"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/worn_concrete_floor",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "road_damaged",
+    "type": "texture",
+    "name": "Road Damaged",
+    "authors": [
+      "Dimitrios Savva"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/road_damaged",
+    "size_m": [
+      2.200000047683716,
+      2.200000047683716
+    ]
+  },
+  {
+    "id": "concrete_moss",
+    "type": "texture",
+    "name": "Concrete Moss",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/concrete_moss",
+    "size_m": [
+      3.000000238418579,
+      3.000000238418579
+    ]
+  },
+  {
+    "id": "worn_mossy_plasterwall",
+    "type": "texture",
+    "name": "Worn Mossy Plasterwall",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/worn_mossy_plasterwall",
+    "size_m": [
+      1.8000000715255737,
+      1.8000000715255737
+    ]
+  },
+  {
+    "id": "white_plaster_rough_01",
+    "type": "texture",
+    "name": "White Plaster Rough 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/white_plaster_rough_01",
+    "size_m": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "red_plaster_weathered",
+    "type": "texture",
+    "name": "Red Plaster Weathered",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/red_plaster_weathered",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "clay_roof_tiles",
+    "type": "texture",
+    "name": "Clay Roof Tiles",
+    "authors": [
+      "Amal Kumar"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/clay_roof_tiles",
+    "size_m": [
+      4,
+      4
+    ]
+  },
+  {
+    "id": "roof_tiles",
+    "type": "texture",
+    "name": "Roof Tiles",
+    "authors": [
+      "Stephan Seeliger"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/roof_tiles",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "weathered_planks",
+    "type": "texture",
+    "name": "Weathered Planks",
+    "authors": [
+      "Dario Barresi",
+      "Dimitrios Savva"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/weathered_planks",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "wood_planks_grey",
+    "type": "texture",
+    "name": "Wood Planks Grey",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/wood_planks_grey",
+    "size_m": [
+      1.5,
+      1.5000001192092896
+    ]
+  },
+  {
+    "id": "old_planks_02",
+    "type": "texture",
+    "name": "Old Planks 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/old_planks_02",
+    "size_m": [
+      2,
+      2
+    ]
+  },
+  {
+    "id": "bark_brown_02",
+    "type": "texture",
+    "name": "Bark Brown 02",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/bark_brown_02",
+    "size_m": [
+      0.9999990463256836,
+      0.999998927116394
+    ]
+  },
+  {
+    "id": "palm_bark",
+    "type": "texture",
+    "name": "Palm Bark",
+    "authors": [
+      "Charlotte Baglioni"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/palm_bark",
+    "size_m": [
+      1.8600000143051147,
+      1.8600000143051147
+    ]
+  },
+  {
+    "id": "green_metal_rust",
+    "type": "texture",
+    "name": "Green Metal Rust",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/green_metal_rust",
+    "size_m": [
+      1,
+      1
+    ]
+  },
+  {
+    "id": "rusty_metal",
+    "type": "texture",
+    "name": "Rusty Metal",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/rusty_metal",
+    "size_m": [
+      1.5,
+      1.5
+    ]
+  },
+  {
+    "id": "terry_cloth",
+    "type": "texture",
+    "name": "Terry Cloth",
+    "authors": [
+      "colormass",
+      "Rico Cilliers"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/terry_cloth",
+    "size_m": [
+      0.3670535953781794,
+      0.36320000886917114
+    ]
+  },
+  {
+    "id": "dikhololo_sunset",
+    "type": "hdri",
+    "name": "Dikhololo Sunset",
+    "authors": [
+      "Greg Zaal"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/dikhololo_sunset"
+  },
+  {
+    "id": "plastic_monobloc_chair_01",
+    "type": "model",
+    "name": "Plastic Monobloc Chair 01",
+    "authors": [
+      "Kuutti Siitonen"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/plastic_monobloc_chair_01",
+    "polycount": 3356
+  },
+  {
+    "id": "metal_trash_can",
+    "type": "model",
+    "name": "Metal Trash Can",
+    "authors": [
+      "GurJas Studios"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/metal_trash_can",
+    "polycount": 13960
+  },
+  {
+    "id": "street_lamp_02",
+    "type": "model",
+    "name": "Street Lamp 02",
+    "authors": [
+      "Josh Dean"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/street_lamp_02",
+    "polycount": 20338
+  },
+  {
+    "id": "wooden_picnic_table",
+    "type": "model",
+    "name": "Wooden Picnic Table",
+    "authors": [
+      "Ulan Cabanilla"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/wooden_picnic_table",
+    "polycount": 10210
+  },
+  {
+    "id": "fern_02",
+    "type": "model",
+    "name": "Fern 02",
+    "authors": [
+      "Rob Tuytel",
+      "Rico Cilliers"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/fern_02",
+    "polycount": 6232
+  },
+  {
+    "id": "shrub_03",
+    "type": "model",
+    "name": "Shrub 03",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/shrub_03",
+    "polycount": 16955
+  },
+  {
+    "id": "tree_stump_01",
+    "type": "model",
+    "name": "Tree Stump 01",
+    "authors": [
+      "Rob Tuytel"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/tree_stump_01",
+    "polycount": 41046
+  },
+  {
+    "id": "rubber_duck_toy",
+    "type": "model",
+    "name": "Rubber Duck Toy",
+    "authors": [
+      "Plat251"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/rubber_duck_toy",
+    "polycount": 4288
+  },
+  {
+    "id": "utility_box_01",
+    "type": "model",
+    "name": "Utility Box 01",
+    "authors": [
+      "James Ray Cock"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/utility_box_01",
+    "polycount": 4404
+  },
+  {
+    "id": "trashbag",
+    "type": "model",
+    "name": "Trashbag",
+    "authors": [
+      "Benny Weimer"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/trashbag",
+    "polycount": 4482
+  },
+  {
+    "id": "wooden_crate_02",
+    "type": "model",
+    "name": "Wooden Crate 02",
+    "authors": [
+      "James Ray Cock",
+      "Jurita Burger"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/wooden_crate_02",
+    "polycount": 5176
+  },
+  {
+    "id": "dry_branches_medium_01",
+    "type": "model",
+    "name": "Dry Branches Medium 01",
+    "authors": [
+      "Rico Cilliers"
+    ],
+    "license": "CC0",
+    "page": "https://polyhaven.com/a/dry_branches_medium_01",
+    "polycount": 16803
+  }
+]

@@ -1,36 +1,28 @@
 # Playtest report
 
-- **Last full run:** 2026-09-30, opening-route slice, local Vite dev server.
-- **Harness:** `tools/playtest.mjs`, Playwright Chromium with the GPU (ANGLE/D3D11), Windows 11. It runs desktop 1280×720 plus an emulated 390×844 touch phone (deviceScaleFactor 2). The phone is emulated in Chromium, not a physical device.
-- **Result:** 20 passed, 0 failed. The raw JSON is in `playtest-output/results.json`; screenshots are in `docs/screenshots/`.
+- **Last run:** 2026-10-01, opening pass 2, local Vite dev server.
+- **Harness:** `tools/playtest.mjs`, Playwright Chromium with the GPU (ANGLE/D3D11), Windows 11. Desktop 1280×720 plus an emulated 390×844 touch phone. Agent-driven with real keyboard and pointer input. Not a human, not a physical phone.
+- **Result:** 13 passed, 0 failed. Raw JSON: `playtest-output/results.json`.
 
-Movement, the gate, the route, the end card and restart all went through real keyboard and pointer input. Test shortcuts, all labelled: teleports place the player for the collision, boundary and touch-gate checks, and `resetRoute()` is called before the full walk.
+| Check | Result | Observed |
+|---|---|---|
+| load-and-start-card | pass | loadWallMs: 2221; gameLoadMs: 2016 |
+| audio-starts-on-start-click | pass | audio: running |
+| starts-on-the-seawall-mid-search | pass | subtitle: Marc: Arianna?; ground: concrete |
+| camera-fixed-angle | pass | before: [0,15.476]; after: [0,15.476] |
+| methodical-walk-no-run | pass | walkSpeed: 1.3; withShift: 1.3; clipNaturalSpeed: 1.25 |
+| collisions-hold | pass | parapetX: -2.43; fenceX: 4.13 |
+| gate-locked-then-climb | pass | againstGateZ: -69.78; promptAfterTry: <kbd>E</kbd> Climb over; afterClimb: [23.2,-71.05]; y: 0 |
+| play-through-to-the-end | pass | failAt: null; endTime: 93.6; beats: search@0.6 call2@15 creak@24.4 park@32.7 prints@41.1 lane@56.5 bunny@64.3 urgency@68.2 locked@73.9 over@79.7 reveal@79.7 argument@82.3 stay@86.8 end@92.2; missing: []; overlap: false |
+| restart-resets | pass | pos: [-0.6,9.5]; beats: ["search"] |
+| muted-play-has-text | pass | muted: true; lines: 1 |
+| performance-desktop | pass | fps: 60; worstFrameMs: 58.7; drawCalls: 248; tris: 243380; note: desktop GPU, headless Chromium |
+| no-console-errors | pass | errors: [] |
+| touch-walk-and-interact | pass | moved: 3.05; eLitAtBunny: true; carrying: true; note: emulated 390x844, not a physical phone |
 
-| Check | Observed |
-|---|---|
-| Load and start card | ≈4.3 s to load locally; the start card shows Start and Restart route |
-| No inventory or survival UI | No inventory, meters, map, goals, stash panel, reticle or zoom buttons in the page |
-| Camera fixed | Z, X, C, Q, E and the mouse wheel change nothing; the camera's offset from its focus never gains an x part |
-| Acceleration | 0.38 m/s after 90 ms, 2.54 m/s after 1.2 s (snow) |
-| Stopping | Stops about 0.5 s after release, sliding 0.28 m |
-| W walks north | 2.5 m north in 1.2 s with no sideways drift |
-| No prints while standing | Count unchanged over 2 s |
-| Collision | Pushing west into the shelter's stucco wall stops at x = −12.41 (wall at −13) |
-| Turning weight | Reversing drops to 1.8 m/s while he turns |
-| Gate | Pushing north against the closed gate stays at z = −89.54; E opens it |
-| Full route | Shelter → street → woods → deep trail → house. Walk time 2:20 (agent steering straight between waypoints) over 355 m walked |
-| End card | Shown with the walk time |
-| Footprints | 371 prints over 355 m (0.96 m per print), 0 m above the ground, largest same-foot gap within the run stride |
-| Restart | Position, gate, prints, timer and modal all reset |
-| Route boundaries | Pushing sideways at three points in the woods and deep trail stays within the corridor |
-| Performance (desktop GPU) | 60 fps. Worst frame 181 ms, a one-off spike; screenshot capture is the likely cause but this was not isolated |
-| Console errors | None |
-| Touch joystick | A drag on the left side walks 4.1 m north |
-| No page scroll or zoom | scrollY 0, visualViewport scale 1 after a tap and a wheel |
-| Touch E button | Lights up at the gate and opens it |
+**Throttled phone emulation** (`tools/perf-mobile-sim.mjs`: 390×844, 4× CPU throttle, desktop GPU): 60 fps at all seven checkpoints. Worst frame 18–66 ms, 222–285 draw calls, 234–319k triangles.
 
 ## Not covered
 
-- A physical phone (iOS Safari, Android Chrome): performance, safe areas and how the touch controls feel.
-- A human first-time walk: exploration time and whether the route reads without help.
-- Long sessions. The slice is two to three minutes.
+- A physical phone (iOS Safari, Android Chrome): load time over a mobile network (about 11 MB), heat, frame rate, touch feel.
+- A person playing it: the rhythm, whether the clues read, whether the gate and the house land.

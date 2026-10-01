@@ -43,3 +43,66 @@ Houses, fences, walls, the playground, the pavilion, the pharmacy, the lifeguard
 - [Vite](https://vitejs.dev) (MIT)
 - [Playwright](https://playwright.dev) (Apache-2.0), used only for the automated playtest
 - Sound is synthesized with the Web Audio API; there are no audio files.
+
+
+## The opening, pass 2 (2026-09-30)
+
+### Marc
+
+`marc.glb` is Marc's own model, made with Tripo and supplied by Marc (`assets/source/marc/`, rigged, with its clips). `blender/build_marc.py` keeps the Walk, Climb and Frustrated clips, renames them and reduces the texture to 2048 px; `tools/optimize-assets.mjs` compresses it.
+
+### Poly Haven (CC0)
+
+Textures (`public/assets/textures/<id>/`, reduced to WebP), the HDRI (`public/assets/env/`) and props (in `public/assets/models/kit/`: chair, trash can, utility box, picnic table, fern, crate, rubber duck, trash bag, stump, fallen street lamp; decimated where heavy, textures reduced to 512 px WebP). License: CC0, <https://polyhaven.com/license>. From `assets/source/polyhaven/manifest.json`:
+
+| Type | Asset | Authors |
+|---|---|---|
+| texture | [Forest Leaves 02](https://polyhaven.com/a/forest_leaves_02) | Rob Tuytel |
+| texture | [Forest Ground 01](https://polyhaven.com/a/forrest_ground_01) | Rob Tuytel |
+| texture | [Brown Mud Leaves 01](https://polyhaven.com/a/brown_mud_leaves_01) | Rob Tuytel |
+| texture | [Playground Sand](https://polyhaven.com/a/playground_sand) | eye-candy.xyz |
+| texture | [Park Dirt](https://polyhaven.com/a/park_dirt) | Christopher Melani |
+| texture | [Concrete Pavement](https://polyhaven.com/a/concrete_pavement) | Charlotte Baglioni |
+| texture | [Worn Concrete Floor](https://polyhaven.com/a/worn_concrete_floor) | Dimitrios Savva |
+| texture | [Road Damaged](https://polyhaven.com/a/road_damaged) | Dimitrios Savva |
+| texture | [Concrete Moss](https://polyhaven.com/a/concrete_moss) | Rob Tuytel |
+| texture | [Worn Mossy Plasterwall](https://polyhaven.com/a/worn_mossy_plasterwall) | Amal Kumar |
+| texture | [White Plaster Rough 01](https://polyhaven.com/a/white_plaster_rough_01) | Rob Tuytel |
+| texture | [Red Plaster Weathered](https://polyhaven.com/a/red_plaster_weathered) | Amal Kumar |
+| texture | [Clay Roof Tiles](https://polyhaven.com/a/clay_roof_tiles) | Amal Kumar |
+| texture | [Roof Tiles](https://polyhaven.com/a/roof_tiles) | Stephan Seeliger |
+| texture | [Weathered Planks](https://polyhaven.com/a/weathered_planks) | Dario Barresi, Dimitrios Savva |
+| texture | [Wood Planks Grey](https://polyhaven.com/a/wood_planks_grey) | Rob Tuytel |
+| texture | [Old Planks 02](https://polyhaven.com/a/old_planks_02) | Rob Tuytel |
+| texture | [Bark Brown 02](https://polyhaven.com/a/bark_brown_02) | Rob Tuytel |
+| texture | [Palm Bark](https://polyhaven.com/a/palm_bark) | Charlotte Baglioni |
+| texture | [Green Metal Rust](https://polyhaven.com/a/green_metal_rust) | Rob Tuytel |
+| texture | [Rusty Metal](https://polyhaven.com/a/rusty_metal) | Rob Tuytel |
+| texture | [Terry Cloth](https://polyhaven.com/a/terry_cloth) | colormass, Rico Cilliers |
+| hdri | [Dikhololo Sunset](https://polyhaven.com/a/dikhololo_sunset) | Greg Zaal |
+| model | [Plastic Monobloc Chair 01](https://polyhaven.com/a/plastic_monobloc_chair_01) | Kuutti Siitonen |
+| model | [Metal Trash Can](https://polyhaven.com/a/metal_trash_can) | GurJas Studios |
+| model | [Street Lamp 02](https://polyhaven.com/a/street_lamp_02) | Josh Dean |
+| model | [Wooden Picnic Table](https://polyhaven.com/a/wooden_picnic_table) | Ulan Cabanilla |
+| model | [Fern 02](https://polyhaven.com/a/fern_02) | Rob Tuytel, Rico Cilliers |
+| model | [Shrub 03](https://polyhaven.com/a/shrub_03) | Rico Cilliers |
+| model | [Tree Stump 01](https://polyhaven.com/a/tree_stump_01) | Rob Tuytel |
+| model | [Rubber Duck Toy](https://polyhaven.com/a/rubber_duck_toy) | Plat251 |
+| model | [Utility Box 01](https://polyhaven.com/a/utility_box_01) | James Ray Cock |
+| model | [Trashbag](https://polyhaven.com/a/trashbag) | Benny Weimer |
+| model | [Wooden Crate 02](https://polyhaven.com/a/wooden_crate_02) | James Ray Cock, Jurita Burger |
+| model | [Dry Branches Medium 01](https://polyhaven.com/a/dry_branches_medium_01) | Rico Cilliers |
+
+### Poly Pizza vehicles and boat
+
+| Game file | Source model | Creator | License | Changes made |
+|---|---|---|---|---|
+| `kit/car_white.glb` | [Car](https://poly.pizza/m/Cz6yDaUcM9) | Quaternius | CC0 1.0 | Smooth shading; aged in the game (dust, matte) |
+| `kit/stationwagon.glb` | [Stationwagon](https://poly.pizza/m/vTTTjDoxhV) | Kay Lousberg | CC0 1.0 | As above |
+| `kit/broken_car.glb` | [Broken Car](https://poly.pizza/m/Y67erogmR9) | Quaternius | CC0 1.0 | As above |
+| `kit/van.glb` | [Generic Van](https://poly.pizza/m/BbRojf2v3H) | PuKkBuMXDD | CC BY 3.0 | As above |
+| `kit/rowboat.glb` | [Rowboat](https://poly.pizza/m/dt1yhb5AYXD) | Poly by Google | CC BY 3.0 | As above |
+
+### Built for this project
+
+Everything else in `public/assets/models/kit/` is built by `blender/build_kit.py`: the trees, palms, shrubs and palmettos (leaf, frond and fan textures generated by `blender/kit/foliage.py`), the houses, pump house, walls, fences and gate, the playground, dock, cooler, bunny and branch.

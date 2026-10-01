@@ -10,10 +10,11 @@ export const seeThrough = {
 };
 
 const patched = new WeakSet();
-export function makeSeeThrough(mat) {
+/** nearFade: also thin out fragments well in front of Marc (tree canopies between him and the camera). */
+export function makeSeeThrough(mat, { nearFade = false } = {}) {
   if (!mat || patched.has(mat) || !mat.isMeshStandardMaterial) return;
   patched.add(mat);
-  const prev = mat.onBeforeCompile;
+  const prev = mat.onBeforeCompile, prevKey = mat.customProgramCacheKey?.() || '';
   mat.onBeforeCompile = (s, r) => {
     prev?.(s, r);
     s.uniforms.uPlayerPx = seeThrough.uPlayerPx;
@@ -29,9 +30,14 @@ export function makeSeeThrough(mat) {
             float bayer = mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y) * 2.0, 4.0) / 4.0;
             if (bayer + 0.12 > edge) discard;
           }
+          ${nearFade ? `if (vViewPosition.z < uPlayerDepth - 3.0) {
+            float k = clamp((uPlayerDepth - 3.0 - vViewPosition.z) / 6.0, 0.0, 1.0) * 0.75;
+            float b2 = mod(floor(gl_FragCoord.x) * 3.0 + floor(gl_FragCoord.y) * 2.0, 5.0) / 5.0;
+            if (b2 < k) discard;
+          }` : ''}
         }`);
   };
-  mat.customProgramCacheKey = () => 'seethrough';
+  mat.customProgramCacheKey = () => prevKey + '|seethrough' + (nearFade ? 'N' : '');
   mat.needsUpdate = true;
 }
 

@@ -306,5 +306,60 @@
     "license": "CC0 1.0",
     "title": "radio",
     "bytes": 28996
+  },
+  {
+    "code": "V1",
+    "id": "Cz6yDaUcM9",
+    "name": "car-white",
+    "creator": "Quaternius",
+    "page": "https://poly.pizza/m/Cz6yDaUcM9",
+    "download": "https://static.poly.pizza/59a67a6c-490e-472e-bae6-5a4d2541f1c7.glb",
+    "license": "CC0 1.0",
+    "title": "car-white",
+    "bytes": 164752
+  },
+  {
+    "code": "V2",
+    "id": "vTTTjDoxhV",
+    "name": "stationwagon",
+    "creator": "Kay Lousberg",
+    "page": "https://poly.pizza/m/vTTTjDoxhV",
+    "download": "https://static.poly.pizza/840253f1-676f-4d91-bd5c-9c6e3647ba73.glb",
+    "license": "CC0 1.0",
+    "title": "stationwagon",
+    "bytes": 84872
+  },
+  {
+    "code": "V3",
+    "id": "Y67erogmR9",
+    "name": "broken-car",
+    "creator": "Quaternius",
+    "page": "https://poly.pizza/m/Y67erogmR9",
+    "download": "https://static.poly.pizza/ab665646-c115-492f-a72f-1120399a1dd5.glb",
+    "license": "CC0 1.0",
+    "title": "broken-car",
+    "bytes": 211012
+  },
+  {
+    "code": "V4",
+    "id": "BbRojf2v3H",
+    "name": "van",
+    "creator": "PuKkBuMXDD",
+    "page": "https://poly.pizza/m/BbRojf2v3H",
+    "download": "https://static.poly.pizza/233b6797-9ce6-4369-8458-0b7fe16444ef.glb",
+    "license": "CC-BY 3.0",
+    "title": "van",
+    "bytes": 192168
+  },
+  {
+    "code": "B1",
+    "id": "dt1yhb5AYXD",
+    "name": "rowboat",
+    "creator": "Poly by Google",
+    "page": "https://poly.pizza/m/dt1yhb5AYXD",
+    "download": "https://static.poly.pizza/0c76d378-c3fb-4a1c-aa5f-a25f09bd3ea4.glb",
+    "license": "CC-BY 3.0",
+    "title": "rowboat",
+    "bytes": 248140
   }
 ]

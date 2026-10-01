@@ -11,11 +11,12 @@ await p.goto((process.argv[2] || 'http://localhost:5173/') + '?fresh=1&autostart
 await p.waitForFunction(() => window.__game?.started, null, { timeout: 120000 });
 const load = Date.now() - t0;
 const out = [];
-for (const [x, z] of [[-60, 16], [40, 1], [18, -78], [-100, 0], [50, 56]]) {
-  await p.evaluate(([x, z]) => window.__game.teleport(x, z), [x, z]);
+const marks = await p.evaluate(() => window.__game.route.marks.map((m) => [m.x, m.z, m.id]));
+for (const [x, z, id] of marks) {
+  await p.evaluate(([x, z]) => { const g = window.__game; g.player.setPosition(x, z, Math.PI); g.snapCamera(); g.perf.worst = 0; }, [x, z]);
   await p.waitForTimeout(3500);
-  const s = await p.evaluate(() => { const g = window.__game; return { fps: g.perf.fps, calls: g.renderer.info.render.calls, px: g.renderer.getPixelRatio(), low: g.quality.low }; });
-  out.push({ at: [x, z], ...s });
+  const s = await p.evaluate(() => { const g = window.__game; return { fps: g.perf.fps, worstMs: Math.round(g.perf.worst), calls: g.renderer.info.render.calls, tris: g.renderer.info.render.triangles, px: g.renderer.getPixelRatio(), low: g.quality.low }; });
+  out.push({ at: id, ...s });
 }
 console.log(JSON.stringify({ loadMs: load, samples: out }, null, 1));
 await b.close();

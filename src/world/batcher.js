@@ -28,6 +28,7 @@ export class Batcher {
 
   /** geometry is transformed by parent (Matrix4) then local matrix. */
   add(geo, mat, matrix, opts = {}) {
+    if (!mat) return; // e.g. snow pieces when snow is off
     const g = (geo.index ? geo.toNonIndexed() : geo.clone()).applyMatrix4(matrix);
     for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
     if (mat.userData.bake) {

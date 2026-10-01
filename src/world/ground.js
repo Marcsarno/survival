@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32, pointInPoly } from '../core/util.js';
 import { PAL } from '../palette.js';
-import { asphaltTexture, concreteTexture, paverTexture, sandTexture, lotTexture, rubberTexture } from './textures.js';
+import { asphaltTexture, concreteTexture, paverTexture, sandTexture, lotTexture, rubberTexture, mudTexture } from './textures.js';
 
 // Faceted snow terrain plus flat surface overlays (roads, walks, sand, water).
 export const WORLD = { x0: -150, x1: 150, z0: -130, z1: 120 };
@@ -12,7 +12,12 @@ const CELL = 3.0;
 let HG = null, GNX = 0, GNZ = 0;
 const hAt = (i, j) => HG[Math.min(GNX, Math.max(0, i)) * (GNZ + 1) + Math.min(GNZ, Math.max(0, j))];
 
+/** Height of what you stand on: a flat surface overlay (road, walk, mud) where there is one, else the terrain. */
 export function groundHeight(x, z) {
+  const s = surfaceAt(x, z); if (s) return s.y;
+  return terrainHeightAt(x, z);
+}
+function terrainHeightAt(x, z) {
   if (!HG) return 0;
   const fx = (x - WORLD.x0) / CELL, fz = (z - WORLD.z0) / CELL;
   const i = Math.floor(fx), j = Math.floor(fz);
@@ -29,7 +34,7 @@ export function groundHeight(x, z) {
  * bounds: terrain extent (replaces WORLD). heightAt(x, z): authored height added to the small noise
  * (banks either side of the trail). tintAt(x, z): 0..1 packed-trail tint. roughAt(x, z): 0..1 extra bumpiness (drifts).
  */
-export function buildGround(scene, { bounds, waterPolys = [], trailLines = [], darkPolys, heightAt, tintAt, roughAt }) {
+export function buildGround(scene, { bounds, waterPolys = [], trailLines = [], darkPolys, heightAt, tintAt, roughAt, colorAt, noise = 1 }) {
   if (bounds) Object.assign(WORLD, bounds);
   const rng = mulberry32(99);
   const cell = CELL;
@@ -39,7 +44,7 @@ export function buildGround(scene, { bounds, waterPolys = [], trailLines = [], d
   for (let i = 0; i <= nx; i++) for (let j = 0; j <= nz; j++) {
     const x = WORLD.x0 + i * cell, z = WORLD.z0 + j * cell;
     const r = mulberry32(i * 7919 + j * 104729)();
-    let h = 0.04 * Math.sin(x * 0.21 + z * 0.13) * Math.cos(z * 0.17 - x * 0.07) + (r - 0.5) * 0.24 * (1 + 1.5 * (roughAt ? roughAt(x, z) : 0));
+    let h = (0.04 * Math.sin(x * 0.21 + z * 0.13) * Math.cos(z * 0.17 - x * 0.07) + (r - 0.5) * 0.24 * (1 + 1.5 * (roughAt ? roughAt(x, z) : 0))) * noise;
     // pull snow down under pavement so overlays stay visible
     let paved = false;
     for (const [dx, dz] of [[0, 0], [1.2, 0], [-1.2, 0], [0, 1.2], [0, -1.2]]) { const k = surfaceKindAt(x + dx, z + dz); if (k !== 'snow' && k !== 'sand') { paved = true; break; } }
@@ -62,6 +67,7 @@ export function buildGround(scene, { bounds, waterPolys = [], trailLines = [], d
     const tris = ((i + j) % 2) ? [[0, 3, 1], [1, 3, 2]] : [[0, 3, 2], [0, 2, 1]];
     for (const t of tris) {
       const r = rng();
+      if (colorAt) { colorAt(cx, cz, r, c); for (const k of t) { pos.push(...v[k]); col.push(c.r, c.g, c.b); } continue; }
       c.copy(base).lerp(r < 0.3 ? shade : blue, r * 0.45);
       if (nearTrail(cx, cz)) c.lerp(trail, 0.72);
       if (darkPolys && darkPolys.some((p) => pointInPoly(cx, cz, p))) c.lerp(new THREE.Color('#c3cbd9'), 0.4);
@@ -91,30 +97,35 @@ export function distToPolyline(x, z, pts) {
 }
 
 const surfMats = {};
+// Snow dusting on road and walk textures. setSurfaceSnow(0) gives bare surfaces (the opening redesign).
+let SURF_SNOW = null;
+export function setSurfaceSnow(v) { SURF_SNOW = v; }
 function surfMat(kind) {
   if (surfMats[kind]) return surfMats[kind];
-  const map = { asphalt: asphaltTexture(1), concrete: concreteTexture(2), paver: paverTexture(3), sand: sandTexture(4), lot: lotTexture(7), rubber: rubberTexture(6) }[kind];
-  const m = new THREE.MeshStandardMaterial({ map, roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+  const sn = SURF_SNOW;
+  const map = { asphalt: () => asphaltTexture(1, sn ?? 0.55), concrete: () => concreteTexture(2, sn ?? 0.6), paver: () => paverTexture(3, sn ?? 0.5), sand: () => sandTexture(4, sn ?? 0.6), lot: () => lotTexture(7), rubber: () => rubberTexture(6), mud: () => mudTexture(8) }[kind]();
+  const m = new THREE.MeshStandardMaterial({ map, roughness: kind === 'mud' ? 0.55 : 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
   surfMats[kind] = m;
   return m;
 }
 
 /** Registry of walkable surface overlays, used for footprint strength and walking speed. */
 export const SURFACES = [];
-export function surfaceKindAt(x, z) {
+export function surfaceKindAt(x, z) { return surfaceAt(x, z)?.kind ?? 'snow'; }
+function surfaceAt(x, z) {
   for (let i = SURFACES.length - 1; i >= 0; i--) {
     const s = SURFACES[i];
-    if (s.poly) { if (pointInPoly(x, z, s.poly)) return s.kind; continue; }
+    if (s.poly) { if (x >= s.bx0 && x <= s.bx1 && z >= s.bz0 && z <= s.bz1 && pointInPoly(x, z, s.poly)) return s; continue; }
     const dx = x - s.x, dz = z - s.z, c = Math.cos(s.rot), sn = Math.sin(s.rot);
     const lx = c * dx - sn * dz, lz = sn * dx + c * dz;
-    if (Math.abs(lx) <= s.w / 2 && Math.abs(lz) <= s.d / 2) return s.kind;
+    if (Math.abs(lx) <= s.w / 2 && Math.abs(lz) <= s.d / 2) return s;
   }
-  return 'snow';
+  return null;
 }
 
 /** Axis-aligned or rotated rectangular surface. repeat = meters per texture tile. */
 export function surface(scene, kind, x, z, w, d, rot = 0, y = 0.04, repeat = 8) {
-  SURFACES.push({ kind, x, z, w, d, rot });
+  SURFACES.push({ kind, x, z, w, d, rot, y });
   const g = new THREE.PlaneGeometry(w, d);
   g.rotateX(-Math.PI / 2);
   const uv = g.attributes.uv;
@@ -128,7 +139,8 @@ export function surface(scene, kind, x, z, w, d, rot = 0, y = 0.04, repeat = 8) 
 
 /** Polygon surface (e.g. beach sand), world-space UVs. */
 export function polySurface(scene, kind, poly, y = 0.03, repeat = 10) {
-  SURFACES.unshift({ kind, poly });
+  const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
+  SURFACES.unshift({ kind, poly, y, bx0: Math.min(...xs), bx1: Math.max(...xs), bz0: Math.min(...zs), bz1: Math.max(...zs) });
   const shape = new THREE.Shape(poly.map(([x, z]) => new THREE.Vector2(x, -z)));
   const g = new THREE.ShapeGeometry(shape);
   g.rotateX(-Math.PI / 2);

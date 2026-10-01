@@ -6,56 +6,150 @@ const REF_MISSING = 'Concept art is kept outside the repo. Run `node tools/hub-r
 const ref = (file, label, note) => ({ status: 'reference', file: R + file, label, note, missing: REF_MISSING });
 const base = (file, label, note) => ({ status: 'superseded', file: B + file, label, note });
 const v1 = (file, label, note) => ({ status: 'agent-tested', file: S + file, label, note });
+const O = 'media/opening-v3/';
+const v2 = (file, title, note, status = 'agent-tested') => ({ status, file: O + file, title, note });
+const was = (file, title, note) => ({ status: 'superseded', file: S + file, title, note });
+
+const T = window.HUB_TIMINGS || { runs: [] };
+const tOf = (label, id) => { const r = T.runs.find((x) => x.label === label); return r && r.beats[id] != null ? `${r.beats[id]} s` : '—'; };
+const beat = (id, b) => ({ ...b, id, mud: tOf('Agent · mud', id), sidewalk: tOf('Agent · sidewalk', id) });
 
 window.HUB = {
-  updated: '2026-09-30 (pass 4: slice v1 playtested by the agent)',
+  updated: '2026-09-30 (opening pass 2: Marc model, Blender kit, Poly Haven textures)',
 
-  overview: {
-    intro: 'Working record for the opening-slice revision. Everything here is a local file; another agent can continue from this folder, docs/STATE.md and docs/DESIGN.md.',
-    goal: 'A compact, linear opening route for portrait phones: Shelter → small neighborhood edge → woods → deeper snowy trail → the house where Arianna is being held. Fixed isometric camera, grounded stand-in movement, visible footprints. No inventory, combat, dialogue or cinematics in this slice. It should feel like a worried father moving from fragile safety toward a dangerous house.',
-    builds: [
-      { status: 'agent-tested', label: 'Local dev build: http://localhost:5173/', href: 'http://localhost:5173/', note: 'Run `npm run dev` in the project folder first. ?debug=1 shows fps, position and ground type; ?dev=1 adds keys 1–8 to jump to checkpoints.' },
-      { status: 'agent-tested', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'The slice, deployed 2026-09-30 at Marc’s request. The playtest passed 20 of 20 against it.' },
-      { status: 'reference', label: 'Baseline source: git tag baseline-sandbox-2026-09-30', note: 'The sandbox before this revision (commit 176d7a5). `git checkout baseline-sandbox-2026-09-30` restores it.' },
+  redesign: {
+    updated: '2026-09-30, pass 2',
+    intro: 'Pass 2 of the opening, after Marc stopped pass 1 ("the path sucks… the whole thing is bad"). This pass follows his direction: his Tripo model of Marc, his five new style images, real art assets, textures and Blender, a varied walk, a locked gate Marc climbs instead of a log, no mud route, no sprint, no AI voice, and the house angled top-right with its front facing south-west. Rough but playable. Nothing here is approved by Marc; "agent-tested" means an automated run with normal controls, not a person.',
+    launch: [
+      'Local: <code>npm run dev</code>, then open <a href="http://localhost:5173/">http://localhost:5173/</a> and press Start. On a phone on the same Wi-Fi, open the <code>Network:</code> address Vite prints.',
+      'Controls: <b>WASD / arrows</b> or the left-thumb joystick to walk (one methodical pace, no run) · <b>E</b> (or the E button) to pick up, open and climb · <b>Esc</b> pause · <b>R</b> restart.',
+      'Checks: <code>npm run playtest</code> (13 checks). Then <code>node tools/hub-timings.mjs</code>.',
+      'The live site still runs slice v1. Neither pass of the redesign has been deployed.',
     ],
-    controls: [
-      { action: 'Walk', keys: 'WASD / arrows (W = north = up-screen)', touch: 'Thumb down anywhere on the left side, drag (floating stick)' },
-      { action: 'Jog (modest)', keys: 'Hold Shift', touch: '🏃 on/off' },
-      { action: 'Interact (the gate)', keys: 'E', touch: 'E (lights up when something is in reach)' },
-      { action: 'Lantern', keys: 'L', touch: '🏮' },
-      { action: 'Pause / help', keys: 'Esc or H', touch: 'II' },
-      { action: 'Restart the route', keys: 'R, or the button on the pause and end cards', touch: 'Pause → Restart route' },
+    diagnosis: [
+      'Pass 1 (agent-tested, rejected by Marc): a straight path with a trunk to step over, a mud route you could simply walk around, an abandoned car in a poor spot, and visuals far worse than before (snow off, flat brown ground, props made of code primitives, no Blender, no asset work).',
+      'Marc\u2019s direction for pass 2: push much harder on the look (find and use art assets, make textures, use Blender), his Marc model, a varied walk, the house top-right and angled, a locked gate instead of a log, no mud, no sprint, a methodical walk with weight, text instead of AI voice. The game itself is a character.',
+      'Process note: the agent will hand Marc a playable build earlier instead of running long test passes first.',
     ],
-    progress: [
-      { status: 'implemented', item: 'Visual project hub', note: 'This page. Baseline captures were taken from the old build before any gameplay change.' },
-      { status: 'implemented', item: 'Recoverable baseline', note: 'Git tag baseline-sandbox-2026-09-30.' },
-      { status: 'agent-tested', item: 'Fixed isometric tracking camera', note: 'Always looks north. No rotation, zoom keys or cinematic mode. Look-ahead toward north and the direction of motion. Distance is authored per section: wider on the street and at the house, tighter in the woods.' },
-      { status: 'agent-tested', item: 'Compact authored route (347 m centerline)', note: 'Shelter, four-house dead-end street, backyard gate, woods with the pond and an old woodshed, deeper trail, the house clearing.' },
-      { status: 'agent-tested', item: 'Inventory and survival UI removed', note: 'Also removed: stash, upgrades, hunger, goals, map, combat and the infected. The code is recoverable from the baseline tag.' },
-      { status: 'agent-tested', item: 'Movement feel', note: 'Acceleration and deceleration, turn weight, speed by ground, collision slide, walk/run blend at the measured stride. Fixed: the stand-in walked backwards in the baseline.' },
-      { status: 'agent-tested', item: 'Footprints', note: 'Placed at the foot bone when the gait passes a foot contact. Bounded pool of 700, long fade. None while standing.' },
-      { status: 'agent-tested', item: 'Gate interaction, arrival card, restart', note: 'The gate blocks until opened (E). An automatic arrival trigger at the porch shows the end card and walk time.' },
-      { status: 'agent-tested', item: 'Automated playtest: 20 of 20 checks pass', note: '`npm run playtest`. Covers desktop keyboard and an emulated portrait touch phone.' },
+    before: [
+      { status: 'superseded', file: 'media/opening-v2/phone-search.jpg', title: 'Pass 1: start', note: 'Graybox: snow off, flat brown ground.' },
+      { status: 'superseded', file: 'media/opening-v2/phone-split.jpg', title: 'Pass 1: the mud split', note: 'You could just walk around the mud.' },
+      { status: 'superseded', file: 'media/opening-v2/phone-figure.jpg', title: 'Pass 1: car and house', note: 'The car placement and the house angle Marc did not like.' },
     ],
-    checks: [
-      ['load-and-start-card', 'Loads (≈4.3 s) and shows the start card'], ['no-inventory-or-survival-ui', 'No inventory, meters, map, goals or zoom buttons'],
-      ['camera-fixed-angle', 'Rotation/zoom keys and the wheel do nothing; the camera never rotates'], ['movement-accelerates', '0.38 m/s after 90 ms, 2.54 m/s after 1.2 s'],
-      ['movement-stops-reliably', 'Stops in ≈0.5 s, sliding 0.28 m'], ['no-footprints-while-standing', 'Print count unchanged over 2 s idle'],
-      ['collision-shelter-wall', 'Pushing into the stucco wall stops cleanly'], ['turning-has-weight', 'Reversing slows to 1.8 m/s while turning'],
-      ['gate-blocks-then-opens', 'Blocked at z −89.5 until E, then opens'], ['route-walkable-to-house', 'Shelter → house with keyboard steering: 140 s agent walk (355 m)'],
-      ['footprints-follow-steps', 'About 0.96 m per print at route pace, prints on the ground (0 m float)'], ['route-boundaries-hold', 'Pushing sideways in the woods and deep trail stays inside'],
-      ['restart-resets-route', 'Position, gate, prints and timer reset'], ['performance-desktop', '60 fps on the desktop GPU (headless Chromium)'],
-      ['touch-joystick-walks-north', 'Emulated touch drag walks north'], ['no-page-scroll-or-zoom', 'The page never scrolls or zooms'], ['touch-interact-button', 'E lights up at the gate and opens it'],
+    refsNote: 'Marc\u2019s five style images for pass 2 (concept art, kept outside the repo in hub/refs-local/). They set the target: textured, painterly-realistic, warm low light, dense foliage masses, clean readable paths.',
+    refs: [
+      { status: 'reference', file: R + 'pass2-ref-4.webp', title: 'Bunny by the broken fence', note: 'Big trunk on the left, the house corner, prints leading on.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass2-ref-5.webp', title: 'The seawall walk', note: 'Canal, dock and rowboat, cooler and toppled chair, fallen street lamp, a small building with a door.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass2-ref-6.webp', title: 'Camp, seawall road, carport house', note: 'Palette and density; the carport with a station wagon.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass2-ref-7.webp', title: 'The playground', note: 'Swing set, slide, tire tunnel, bench, rail fence, dirt path.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass2-ref-8.webp', title: 'The pharmacy strip', note: 'Not in this route yet.', missing: REF_MISSING },
     ],
-    next: [
-      'Marc plays it on a real phone and judges pacing, camera distance and the character size. The character is about 4–5% of screen height in portrait.',
-      'Decide the story beats for the approach (for example "DAD!" in the distance, a voice from the house). None were added: this slice tells the route through layout and light only.',
-      'Import a final Marc model, then tune rigging, the walk/jog blend and true foot-contact events against it.',
+    map: {
+      legend: 'Solid blue: the walk. Meters; north is up. About 110 m from the seawall to the door.',
+      lines: [
+        { pts: [[-0.6, 9.5], [1.9, -5], [3.3, -12], [4.4, -19], [4.2, -24.4], [8.6, -27], [12.6, -30.2], [14.6, -35.2], [13.9, -41], [15.3, -47], [17.8, -52.4], [19.1, -56.5], [20.3, -60.4], [22.2, -66], [23.2, -70.2], [24.2, -72.6], [28.2, -78.6]], color: '#2f7fc1' },
+        { pts: [[-3.6, 30], [-3.8, 16], [-3.4, 6], [-2.3, -4], [-0.4, -12], [1.2, -20], [1.8, -30]], color: '#3d6f80', width: 6 },
+      ],
+      bands: [
+        { z: [30, -24], name: 'Seawall', color: '#c9d6d9' }, { z: [-24, -54.5], name: 'Park', color: '#d6d1a8' },
+        { z: [-54.5, -70.2], name: 'Lane', color: '#d6c7b0' }, { z: [-70.2, -92], name: 'The house', color: '#e3b9a6' },
+      ],
+      markers: [
+        { x: -0.6, z: 9.5, label: 'Start: “Arianna?”' }, { x: 2.6, z: -30.2, label: 'Pump house', color: '#8a8a8a', left: true }, { x: 19.6, z: -38, label: 'Playground, her prints' },
+        { x: 21.6, z: -61.9, label: 'Bunny' }, { x: 23.2, z: -70.2, label: 'Locked gate', left: true }, { x: 33.6, z: -84.6, label: 'The house', color: '#b23b3b' },
+      ],
+    },
+    beatNote: 'One-time triggers by place or action, never timers; one text queue, so lines never overlap; restart clears everything. Times are from the agent run.',
+    beatNames: { search: '“Arianna?”', call2: '“Arianna!”', creak: 'swing', park: 'park', prints: '“She was here.”', bunny: 'bunny', urgency: '“Daddy!”', locked: 'locked', over: 'over', reveal: 'house', argument: 'voices', stay: '“Stay there.”', end: 'end' },
+    beats: [
+      beat('search', { status: 'agent-tested', beat: 'Search on the seawall', purpose: 'Start mid-search; place and mood.', trigger: 'Start.', behavior: '“Arianna?” The canal, the dock and rowboat, a toppled chair and cooler, a fallen street lamp. A second call along the walk.' }),
+      beat('creak', { status: 'agent-tested', beat: 'A swing creaks ahead', purpose: 'Pull Marc on with sound.', trigger: 'Near the end of the promenade.', behavior: 'Caption: “A swing creaks, somewhere ahead.” The swing creaks (procedural sound) and keeps swaying on its own.' }),
+      beat('prints', { status: 'agent-tested', beat: 'Her prints in the sand', purpose: 'The first sign she was here.', trigger: 'Near the prints under the swing.', behavior: '“She was here.” Small prints lead from the swing toward the path north; Marc\u2019s head turns to them.' }),
+      beat('bunny', { status: 'agent-tested', beat: 'The bunny', purpose: 'The personal clue.', trigger: 'E at the bunny (or walking onto / past it).', behavior: '“She wouldn\u2019t leave this.” Marc stops, picks it up and carries it.' }),
+      beat('urgency', { status: 'agent-tested', beat: '“Daddy!”', purpose: 'Urgency, without a sprint.', trigger: '1.6 s after the bunny line.', behavior: '“Daddy!” from ahead, “Arianna!” A low drone begins. Marc keeps his methodical walk; his head turns toward the house.' }),
+      beat('over', { status: 'agent-tested', beat: 'The locked gate', purpose: 'A physical obstacle that makes sense.', trigger: 'E: try it. E again: climb.', behavior: 'He tries the gate, kicks at the latch (the Frustrated clip), the gate rattles: “Locked.” Then he climbs it (the Climb clip, scaled to the gate) and drops down the far side.' }),
+      beat('reveal', { status: 'agent-tested', beat: 'The house', purpose: 'The destination, framed.', trigger: 'Landing over the gate.', behavior: 'The house top-right of the screen, its front facing south-west, candle-lit windows. A figure leaves the window; “A door shuts inside the house.”' }),
+      beat('stay', { status: 'agent-tested', beat: '“Stay there.”', purpose: 'The turn to confrontation.', trigger: 'Near the door once the voices end (or right at it).', behavior: 'Two adults argue inside (placeholder lines). “Stay there.” Marc stops, the door opens a crack, the end card shows each beat\u2019s time.' }),
+    ],
+    timingNote: 'One agent play-through with normal controls (keyboard, straight-line steering, Marc\u2019s single walking pace). A person will be slower. Pass 1 took 49–53 s; slice v1 took 140 s.',
+    runs: T.runs.length ? T.runs : [{ label: 'No runs yet', end: 1, beats: {}, gaps: 'Run npm run playtest, then node tools/hub-timings.mjs', note: '' }],
+    afterNote: 'Pass 2 on an emulated 390×844 phone during an agent play-through (screenshots with HUD and text). Media: hub/media/opening-v3/. No new clips this pass.',
+    after: [
+      { status: 'agent-tested', file: 'media/opening-v3/phone-seawall.jpg', title: 'The seawall', note: 'Start: canal, dock, cooler and chair.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-pumphouse.jpg', title: 'The pump house', note: 'The end of the promenade; the path turns east.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-prints.jpg', title: 'Her prints', note: '“She was here.”' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-lane.jpg', title: 'The lane', note: 'The big oak, the broken fence, the bunny ahead.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-bunny.jpg', title: 'The bunny', note: '“She wouldn\u2019t leave this.”' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-locked.jpg', title: 'Locked', note: 'The gate in the privacy fence.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-reveal.jpg', title: 'Over the gate', note: 'The house top-right.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-argument.jpg', title: 'Voices', note: 'The yard approach.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-stay.jpg', title: '“Stay there.”', note: 'The end of the slice.' },
+      { status: 'agent-tested', file: 'media/opening-v3/phone-end.jpg', title: 'End card', note: 'Each beat\u2019s time.' },
+      { status: 'agent-tested', file: 'media/opening-v3/gate-climb.jpg', title: 'The gate climb (test camera)', note: 'Frames from trying the gate and climbing it, from a low test camera.' },
+    ],
+    clips: [{ status: 'planned', title: 'No clips yet for pass 2', missing: 'Clips come after Marc has played it.' }],
+    compare: [
+      { title: 'The start', before: { status: 'superseded', file: 'media/opening-v2/phone-search.jpg', title: 'Pass 1' }, after: { status: 'agent-tested', file: 'media/opening-v3/phone-seawall.jpg', title: 'Pass 2' }, note: 'From a graybox yard to a textured canal promenade with Marc\u2019s own model.' },
+      { title: 'The house', before: { status: 'superseded', file: 'media/opening-v2/phone-figure.jpg', title: 'Pass 1' }, after: { status: 'agent-tested', file: 'media/opening-v3/phone-reveal.jpg', title: 'Pass 2' }, note: 'The house now sits top-right, angled with its front to the south-west, reached over a locked gate.' },
+    ],
+    problems: [
+      'No human has played it. Marc is the next test.',
+      'The look is far closer to the references but not there yet: the ground reads flat in open areas (the park), the foliage is generated leaf cards rather than painted art, and there is no ambient occlusion.',
+      'The climb is the Tripo Climb clip (made for a ledge) scaled to the gate, then a dropped landing; it reads as a climb from the game camera but is not a true over-the-gate animation.',
+      'Idle is a held pose (the first frame of Frustrated) with breathing; there is no idle animation.',
+      'The argument lines and “Stay there.” are placeholders for Marc to rewrite. Text only, no voices.',
+      'The swing creak, the gate rattle and every other sound are procedural placeholders.',
+      'About 11 MB to download and 230–320k triangles on screen; a phone may load slowly or run warm.',
     ],
     unverified: [
-      'The Mr. Mak Workspace repository (github.com/witnesstodark/mr-mak-workspace) was NOT inspected: the web fetch was declined this session. This hub borrows only the general idea: one browsable place for plan, references, assets and captures.',
-      'No physical phone. Phone results come from Chromium emulating a 390×844 touch viewport, driven by scripted input. Real iOS Safari and Android Chrome performance and touch feel are unknown.',
-      'Walk time was measured with an agent steering straight between waypoints (2:19–2:20). A person exploring for the first time will take longer; not measured.',
+      'A physical phone (only emulated: 60 fps at 4× CPU throttle on a desktop GPU).',
+      'iOS Safari (WebP textures and the HDR environment are expected to work but were not tested).',
+      'How the walk pace and the camera distance feel to a person.',
+    ],
+    next: [
+      'Marc plays it and says what is wrong.',
+      'Then: ground detail and clutter, contact shadows, a better landing after the climb, an idle clip, the pharmacy strip if wanted, sound.',
+    ],
+    assumptions: [
+      'Golden hour sinking toward sunset along the walk (the light follows progress). Candle and lantern light at the house; no electricity.',
+      'One walking speed (about 1.25 m/s, the walk clip\u2019s own pace, a little slower on sand). No run.',
+      'The route and the places on it (seawall, pump house, park, lane, gate, the house) are a proposal for Marc to change.',
+      'Previous builds stay recoverable: tag baseline-opening-route-2026-09-30 (slice v1); pass 1 was never committed.',
+    ],
+  },
+  overview: {
+    intro: 'Working record for the opening. Everything here is a local file; another agent can continue from this folder, docs/STATE.md and docs/DESIGN.md. Start with the Opening redesign tab.',
+    goal: 'Pass 2 of the opening, built to Marc\u2019s direction: his Tripo Marc walks a textured Florida canal neighborhood at golden hour, seawall → park → lane → a locked gate he climbs → the house, angled top-right. Text only. About 94 s for an agent. See the Opening redesign tab.',
+    builds: [
+      { status: 'agent-tested', label: 'Local dev build: http://localhost:5173/', href: 'http://localhost:5173/', note: 'Run `npm run dev` in the project folder first. ?debug=1 shows fps, position, ground and beats; ?dev=1 adds keys 1–7 to jump to checkpoints; ?voices=0 turns the placeholder voices off.' },
+      { status: 'superseded', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'Still slice v1 (the long route). The redesign has not been deployed.' },
+      { status: 'reference', label: 'Previous builds: git tags baseline-opening-route-2026-09-30 (slice v1) and baseline-sandbox-2026-09-30', note: '`git checkout <tag>` restores either.' },
+    ],
+    controls: [
+      { action: 'Walk', keys: 'WASD / arrows (W = up-screen)', touch: 'Thumb down anywhere on the left side, drag (floating stick)' },
+      { action: 'Run (after Arianna calls)', keys: 'Hold Shift', touch: '🏃 on/off (appears when running is revealed)' },
+      { action: 'Interact: step over, pick up', keys: 'E', touch: 'E (lights up when something is in reach)' },
+      { action: 'Sound on/off', keys: '', touch: '🔊 (subtitles always show)' },
+      { action: 'Pause / help', keys: 'Esc or H', touch: 'II' },
+      { action: 'Restart', keys: 'R, or the button on the pause and end cards', touch: 'Pause → Restart' },
+    ],
+    progress: [
+      { status: 'agent-tested', item: 'Opening pass 2: seawall → park → lane → locked gate → the house', note: 'Plays start to end card with normal controls (about 94 s for an agent). Text only.' },
+      { status: 'implemented', item: 'Marc: Marc’s Tripo model, rigged, with Walk, Climb and Frustrated', note: 'blender/build_marc.py → public/assets/models/marc.glb. One methodical walking pace; the gate uses Frustrated then Climb.' },
+      { status: 'implemented', item: 'Blender asset kit', note: 'blender/build_kit.py: generated leaf, frond and palmetto textures; oaks, palms, shrubs, palmettos; four houses, a pump house, walls, fences, the gate; playground, dock, cooler, bunny, branch.' },
+      { status: 'implemented', item: 'Poly Haven textures, HDRI and props; Poly Pizza vehicles and rowboat', note: 'tools/fetch-polyhaven.mjs, tools/fetch-assets.mjs. All in CREDITS.md. Compressed for phones by tools/optimize-assets.mjs (about 11 MB in all).' },
+      { status: 'agent-tested', item: 'Automated playtest: 13 checks', note: '`npm run playtest`: start, camera, walk, collisions, the gate, a full play-through, restart, muted, emulated touch.' },
+      { status: 'superseded', item: 'Opening pass 1 (rejected by Marc)', note: 'Graybox, a log, a mud route. Never committed.' },
+      { status: 'superseded', item: 'Slice v1: the long route from the shelter', note: 'Tag baseline-opening-route-2026-09-30; still the live site.' },
+    ],
+    checks: T.checks || [],
+    next: [
+      'Marc plays pass 2 and says what is wrong.',
+      'Then the next visual pass (ground detail, contact shadows, the climb landing, an idle clip) or the door confrontation.',
+    ],
+    unverified: [
+      'No physical phone (emulated only), no human playtest.',
+      'The Mr. Mak Workspace repository was NOT inspected (the fetch was declined).',
       'Nothing in this hub is approved by Marc yet.',
     ],
     howto: [
@@ -68,26 +162,27 @@ window.HUB = {
   },
 
   route: {
+    superseded: 'Replaced on 2026-09-30 by the opening redesign (see that tab). This was slice v1: a 350 m walk from the shelter to the house, about 140 s for an agent. Kept for comparison; tag baseline-opening-route-2026-09-30.',
     intro: 'One linear route. General travel is north (up-screen). Bends, openings and terrain change the composition. Boundaries are walls, fences, houses, a dense tree band on banks that rise either side of the trail, rocks and drifts. A corridor limit exists only as a safety net behind those boundaries.',
     legend: 'Dashed purple: the plan from pass 1. Solid blue: the implemented centerline. Meters; north is up.',
     planned: [[0, 12], [0, -10], [3, -24], [8, -50], [6, -72], [2, -88], [-4, -100], [-16, -122], [-12, -146], [4, -166], [10, -188], [2, -210], [-12, -232], [-14, -254], [-2, -274], [8, -292], [10, -310]],
     implemented: [[-1, 14], [-1, 2], [0, -10], [0, -12], [1, -24], [2, -50], [3, -78], [3, -89], [3, -93], [-3, -102], [-14, -122], [-15, -140], [-4, -160], [8, -180], [6, -202], [-6, -222], [-13, -242], [-9, -262], [2, -280], [9, -293], [10, -304], [10, -312]],
     markers: [{ x: -2.4, z: 13.2, label: 'Start (fire)' }, { x: 3, z: -90, label: 'Gate', color: '#2f7fc1' }, { x: -23.5, z: -140, label: 'Pond', color: '#6f95b6' }, { x: 13, z: -176, label: 'Woodshed', color: '#8a6547' }, { x: 10, z: -321, label: 'The house', color: '#b23b3b' }],
     sections: [
-      { id: 'shelter', name: 'Shelter', band: [22, -12], color: '#f2c57c', status: 'agent-tested', time: '≈10 s', feel: 'A small pocket of warmth and fragile safety.',
+      { id: 'shelter', name: 'Shelter', band: [22, -12], color: '#f2c57c', status: 'superseded', time: '≈10 s', feel: 'A small pocket of warmth and fragile safety.',
         detail: 'Tile-roof pavilion with crates and a hanging lantern, the fire pit with log benches, low stucco walls. The fire and the lantern are the only warm light until the house. The only way out is a gap in the north wall, so you walk around the pavilion first.',
         shots: [{ title: 'Shelter', versions: [ref('11-home-pavilion.png', 'Reference: 11 home pavilion'), base('phone-start.png', 'Baseline sandbox (phone)'), v1('phone-shelter.png', 'Slice v1 (phone)'), v1('desktop-start.png', 'Slice v1 (desktop)')] }] },
-      { id: 'street', name: 'Neighborhood edge', band: [-12, -90], color: '#e7d3c3', status: 'agent-tested', time: '≈25 s', feel: 'Traces of ordinary family life, abandoned.',
+      { id: 'street', name: 'Neighborhood edge', band: [-12, -90], color: '#e7d3c3', status: 'superseded', time: '≈25 s', feel: 'Traces of ordinary family life, abandoned.',
         detail: 'A short dead-end street: four stucco houses with barrel-tile roofs and boarded windows, cars, mailboxes, dead utility lines, a snowman, a swing set, a bicycle and two lawn flamingos. Backyard fences close it in. At the cul-de-sac a wooden gate in the back fence is the way into the woods (E to open).',
         shots: [{ title: 'Street', versions: [ref('12-gameplay-two-routes.png', 'Reference: 12 two routes'), base('phone-street.png', 'Baseline sandbox street'), v1('phone-street.png', 'Slice v1 street')] },
           { title: 'The gate', versions: [v1('phone-gate.png', 'Slice v1: gate closed, E prompt')] }] },
-      { id: 'woods', name: 'Woods', band: [-90, -206], color: '#b9cbb8', status: 'agent-tested', time: '≈45 s', feel: 'Greater isolation, narrower views, fewer signs of safety.',
+      { id: 'woods', name: 'Woods', band: [-90, -206], color: '#b9cbb8', status: 'superseded', time: '≈45 s', feel: 'Greater isolation, narrower views, fewer signs of safety.',
         detail: 'A packed trail between banks of pines and firs, bending west then east. It skirts a frozen pond (the view opens, and you can step onto the ice) and passes an old unlit woodshed. There are split-rail fence remnants, fallen logs and stumps. Deer, rabbits and a fox flee if you get close.',
         shots: [{ title: 'Woods', versions: [ref('06-snowy-woodland.png', 'Reference: 06 snowy woodland'), base('phone-woods.png', 'Baseline sandbox woods'), v1('phone-woods.png', 'Slice v1 woods'), v1('phone-pond.png', 'Slice v1 pond')] }] },
-      { id: 'deep', name: 'Deeper snowy trail', band: [-206, -288], color: '#a8b8cc', status: 'agent-tested', time: '≈40 s', feel: 'Harder going: deep snow slows you, the light fades, heavier snowfall.',
+      { id: 'deep', name: 'Deeper snowy trail', band: [-206, -288], color: '#a8b8cc', status: 'superseded', time: '≈40 s', feel: 'Harder going: deep snow slows you, the light fades, heavier snowfall.',
         detail: 'A narrower trail with deep snow (2.3 m/s on the trail, 1.95 m/s off it), bumpier ground, drifts, dead pines and a fallen log that half-blocks the way. Fog closes in and the camera sits a little closer. Near the end, a warm window first shows at the top of the frame.',
         shots: [{ title: 'Deep trail', versions: [v1('phone-deep.png', 'Slice v1 deep trail'), v1('phone-glimpse.png', 'Slice v1: first glimpse (warm light, top right)')] }] },
-      { id: 'house', name: 'The house', band: [-288, -335], color: '#d7a7a0', status: 'agent-tested', time: '≈15 s', feel: 'A framed destination; a small warm light that feels unsettling.',
+      { id: 'house', name: 'The house', band: [-288, -335], color: '#d7a7a0', status: 'superseded', time: '≈15 s', feel: 'A framed destination; a small warm light that feels unsettling.',
         detail: 'An isolated stucco house in a clearing, facing you: warm light in the windows, two lanterns on the porch, a paved path, a yard fence with a broken front rail, a dark pickup-like SUV and crates. Reaching the porch steps triggers the end card. No interior and no confrontation.',
         shots: [{ title: 'The house', versions: [ref('01-rescue-approach.png', 'Reference: 01 rescue approach'), v1('phone-house.png', 'Slice v1 approach'), v1('phone-arrival.png', 'Slice v1 at the porch (arrival)')] }] },
     ],
@@ -102,9 +197,12 @@ window.HUB = {
   },
 
   art: {
-    intro: 'The visual target is simplified faceted 3D with believable proportions: cool blue snow against small warm lantern light. This pass is graybox: composition, scale, spacing and atmosphere come before materials.',
+    intro: 'Current pass (opening redesign): sparse, simple, reusable assets, broad flat materials, muted slate-brown and olive, warm candle and lantern light at the house. No snow in this pass. Earlier passes aimed at faceted snowy 3D (the references after the first three).',
     refsNote: REF_MISSING,
     refs: [
+      { status: 'reference', file: R + '01-woods-and-log.png', title: 'Opening 01: woods and log', note: 'Current target (opening redesign): compact wooded approach, a low trunk to step over, a stucco wall.', missing: REF_MISSING },
+      { status: 'reference', file: R + '02-bunny-discovery.png', title: 'Opening 02: bunny discovery', note: 'Current target: the clue beside a readable route.', missing: REF_MISSING },
+      { status: 'reference', file: R + '03-car-and-house.png', title: 'Opening 03: car and house', note: 'Current target: the car, the yard wall and gate, the lit window.', missing: REF_MISSING },
       { status: 'reference', file: R + '01-rescue-approach.png', title: '01 Rescue approach', note: 'Primary target for the house: porch lanterns, warm window, fence, pickup, footprints leading in.', missing: REF_MISSING },
       { status: 'reference', file: R + '06-snowy-woodland.png', title: '06 Snowy woodland', note: 'Woods target: rail fences, stumps, trail footprints, dusk blue with one warm lantern.', missing: REF_MISSING },
       { status: 'reference', file: R + '11-home-pavilion.png', title: '11 Home pavilion', note: 'Shelter target: tile-roof pavilion, stucco walls, warm interior.', missing: REF_MISSING },
@@ -137,14 +235,18 @@ window.HUB = {
     code: [
       { status: 'agent-tested', what: 'Stucco houses with barrel-tile roofs, garages, porches', where: 'src/world/builders.js house()', use: 'Four street houses; the destination house' },
       { status: 'agent-tested', what: 'Pavilion, stucco walls, wood and rail fences, swing set, woodshed', where: 'src/world/builders.js', use: 'Shelter, boundaries, set dressing' },
-      { status: 'agent-tested', what: 'Route layout, banks, trail ribbon, gate', where: 'src/world/route.js', use: 'The whole slice' },
+      { status: 'agent-tested', what: 'The opening level: yard, passage, split, road, yard and house; mud patches; her prints', where: 'src/world/opening.js', use: 'The whole opening (replaces src/world/route.js, which is in tag baseline-opening-route-2026-09-30)' },
+      { status: 'agent-tested', what: 'Fallen trunk, stuffed bunny, snapped branch, plastic chair, window figure, door crack', where: 'src/world/opening.js (primitive shapes)', use: 'Beats 2, 3, 6 and 7' },
+      { status: 'superseded', what: 'Route layout, banks, trail ribbon, gate (slice v1)', where: 'src/world/route.js (in the tag)', use: 'The long route' },
       { status: 'agent-tested', what: 'Faceted snow terrain, footprints, snowfall', where: 'src/world/ground.js, src/systems/footprints.js, snowfall.js', use: 'Everywhere' },
     ],
   },
 
   characters: {
-    intro: 'Marc is the only character on screen in this slice. The stand-in is a recolored low-poly Adventurer. Final models, rigging and animation are deferred.',
+    intro: 'Marc is the only character on screen. Arianna and the two adults at the house are heard, not seen (placeholder voices, subtitled); the figure at the window is a flat dark shape. The stand-in is a recolored low-poly Adventurer. Final models, rigging and animation are deferred.',
     standins: [
+      { status: 'agent-tested', file: O + 'phone-call.png', title: 'Marc at game scale (opening redesign)', note: 'About 10% of the screen height in portrait at the new camera distance, carrying the bunny.' },
+      { status: 'agent-tested', file: O + 'phone-figure.png', title: 'The figure at the window (stand-in)', note: 'A flat dark head-and-shoulders shape in the lit window; it slides out of view at the reveal.' },
       { status: 'agent-tested', file: S + 'phone-gait-close.png', title: 'Marc stand-in (test close-up)', note: 'Quaternius Adventurer, recolored: olive jacket, jeans, winter sleeves, backpack; 1.8 m tall. Close test camera, not the game camera.' },
       { status: 'agent-tested', file: S + 'phone-shelter.png', title: 'Marc stand-in at game scale (portrait)', note: 'About 4–5% of screen height on a phone. To be judged by Marc on a real phone.' },
       { status: 'reference', file: '../docs/renders/characters-source.png', title: 'Source character bases', note: 'Adventurer (C13) and Hooded Adventurer (C14), the two bases Marc selected for the prototype.' },
@@ -158,10 +260,10 @@ window.HUB = {
     ],
     roles: [
       { name: 'Marc', role: 'Player character: husband and father, not an action hero', slice: 'Playable stand-in' },
-      { name: 'Arianna (7)', role: 'Older daughter, held at the house', slice: 'Not shown: the house is the destination' },
+      { name: 'Arianna (7)', role: 'Older daughter, held at the house', slice: 'Heard once from ahead: “Daddy!” (placeholder voice). Her bunny and small prints are the clues.' },
       { name: 'Yola', role: 'Wife, medical knowledge', slice: 'Not in this slice' },
       { name: 'Lilah (2)', role: 'Younger daughter', slice: 'Not in this slice' },
-      { name: 'The husband and wife at the house', role: 'Desperate people, not villains', slice: 'Not shown; the confrontation is later work' },
+      { name: 'The husband and wife at the house', role: 'Desperate people, not villains', slice: 'Heard arguing inside, then “Stay there.” Placeholder lines, labeled Man / Woman (inside). The confrontation is later work.' },
     ],
   },
 
@@ -169,6 +271,28 @@ window.HUB = {
     deferred: 'Final rigging and animation are deferred until a final character model exists. These tests check stand-in locomotion: responsiveness, turning, stopping, ground contact and footprints.',
     intro: 'The standard test (tools/capture.mjs motionTest) is W for 3 s, release and wait 1.3 s, then D, S, A, W for 1.1 s each. Clips are recorded from the game canvas, so they show no HUD. Input is scripted keyboard input, not a human thumb on a joystick. The clips play in the hub; use the controls to scrub.',
     tests: [
+      {
+        status: 'agent-tested', title: 'M2: opening redesign: walk, run, mud, step over', date: '2026-09-30', build: 'opening redesign',
+        conditions: 'Chromium, emulated 390×844 phone, keyboard input; and the desktop playtest. Ground speeds from the playtest (1.5 s of input from a standstill).',
+        clips: [
+          { status: 'agent-tested', file: O + 'clip-walk-stop.webm', title: 'Standard motion test from the start', note: 'Walks across the first mud patch: tracks only there.' },
+          { status: 'agent-tested', file: O + 'clip-sidewalk.webm', title: 'Running the sidewalk', note: 'Run on firm ground, 4.7 m/s.' },
+          { status: 'agent-tested', file: O + 'clip-opening-a.webm', title: 'Stepping over the trunk', note: 'Part of play-through A.' },
+          { status: 'agent-tested', file: O + 'phone-after-motion.png', title: 'Tracks after the test', note: 'Distance-based, mud only.' },
+        ],
+        findings: [
+          'Speeds (m/s): sidewalk walk 2.15 / run 4.7; dirt walk 2.0 / run 4.4; mud walk 1.2 / run 1.75; 1.7 in the yard. Acceleration 0.38 m/s after 90 ms, 2.0 after 1.2 s; stops in about 0.45 s.',
+          'Walk speed now sits below the walk/run blend (2.5–3.9 m/s), so walking plays the pure Walk clip (about 1.6× its natural rate) and running blends into Run.',
+          'Stepping over the trunk: a 0.8 s controlled move with a 0.42 m lift, no collision during it, landing 1.05 m past the axis. Presses during the step do nothing. It plays the walk cycle: there is no climb animation yet.',
+          'Tracks: one every 0.72 m in mud, alternating sides, none on dirt or pavement, none while standing; pool of 160.',
+          'Feet now stand on the flat surfaces (sidewalk, road, mud). Before, they sat about 10 cm into them, because ground height ignored the overlays (fixed in ground.js).',
+        ],
+        revisions: [
+          'R5: running locked until the story reveals it; touch run button hidden until then.',
+          'R6: footprints split: step sounds stay on foot contacts; tracks became distance-based and mud-only.',
+          'R7: groundHeight() returns the overlay height on roads, walks and mud.',
+        ],
+      },
       {
         status: 'superseded', title: 'M0: baseline locomotion (old sandbox build)', date: '2026-09-30', build: '176d7a5 (baseline-sandbox-2026-09-30)',
         conditions: 'Chromium, emulated 390×844 phone viewport (deviceScaleFactor 2, touch), phone quality preset, keyboard input. Camera at the default 45° yaw, so W moves north-west.',

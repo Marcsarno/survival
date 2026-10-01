@@ -4,8 +4,9 @@ import * as THREE from 'three';
 // so up-screen is always north, the direction of travel. The framing puts the player below the
 // middle of the screen and leads toward north and toward where the player is moving, so there is
 // room to see what lies ahead. Portrait and landscape use different distances and FOVs.
-const PORTRAIT = { fov: 52, dist: 22, pitch: 0.86, lead: 6 };   // pitch: radians above the horizon
-const LANDSCAPE = { fov: 36, dist: 26, pitch: 0.86, lead: 3.5 };
+// Portrait frames Marc at about 8% of the screen height with room to see the scene around him (pass 2).
+const PORTRAIT = { fov: 46, dist: 17.5, pitch: 0.87, lead: 1.3 };   // pitch: radians above the horizon (about 50°)
+const LANDSCAPE = { fov: 34, dist: 24, pitch: 0.87, lead: 1.2 };
 // tuning aid: ?cam=fov,dist,pitch,lead overrides the portrait (or landscape) values
 const q = new URLSearchParams(location.search).get('cam');
 if (q) { const [fov, dist, pitch, lead] = q.split(',').map(Number); for (const c of [PORTRAIT, LANDSCAPE]) Object.assign(c, { fov: fov || c.fov, dist: dist || c.dist, pitch: pitch || c.pitch, lead: lead ?? c.lead }); }
@@ -17,7 +18,8 @@ export class FollowCamera {
     this.focus = new THREE.Vector3();
     this.lead = new THREE.Vector3();
     this.shake = 0;
-    this.zoom = 1; this.zoomTarget = 1;   // authored per section by the game (1 = default distance)
+    this.zoom = 1; this.zoomTarget = 1;   // authored per area by the game (1 = default distance)
+    this.bias = { x: 0, z: 0, w: 0 }; this.biasTarget = null; // authored pull of the focus toward a point (no rotation)
     this.setAspect(aspect);
   }
   setAspect(aspect) {
@@ -31,15 +33,20 @@ export class FollowCamera {
   /** target: player position; vel: player velocity (m/s) for a small look-ahead in the direction of motion */
   update(dt, target, vel, snap = false) {
     const c = this.cfg;
-    // lead: always a little north, plus up to ~2.5 m toward the motion (smoothed so stops don't jolt)
-    const lx = vel ? Math.max(-2.5, Math.min(2.5, vel.x * 0.55)) : 0;
-    const lz = -c.lead + (vel ? Math.max(-2.5, Math.min(2.5, vel.z * 0.55)) : 0);
+    // lead: always a little north, plus up to ~1.6–2 m toward the motion (smoothed so stops don't jolt)
+    const lx = vel ? Math.max(-2.0, Math.min(2.0, vel.x * 0.45)) : 0;
+    const lz = -c.lead + (vel ? Math.max(-1.6, Math.min(1.6, vel.z * 0.4)) : 0);
     const kl = snap ? 1 : 1 - Math.exp(-dt * 1.6);
     this.lead.x += (lx - this.lead.x) * kl; this.lead.z += (lz - this.lead.z) * kl;
     this.zoom += (this.zoomTarget - this.zoom) * (snap ? 1 : 1 - Math.exp(-dt * 0.6));
+    const bt = this.biasTarget || { x: this.bias.x, z: this.bias.z, w: 0 }, kb = snap ? 1 : 1 - Math.exp(-dt * 0.9);
+    this.bias.x += (bt.x - this.bias.x) * kb; this.bias.z += (bt.z - this.bias.z) * kb; this.bias.w += (bt.w - this.bias.w) * kb;
+    const fx = target.x + this.lead.x, fz = target.z + this.lead.z, w = this.bias.w;
     const k = snap ? 1 : 1 - Math.exp(-dt * 5);
-    this.focus.x += (target.x + this.lead.x - this.focus.x) * k;
-    this.focus.z += (target.z + this.lead.z - this.focus.z) * k;
+    // mostly sideways framing; only a little forward, so Marc stays above the subtitles and the thumb
+    const bx = Math.max(-2.6, Math.min(2.6, (this.bias.x - fx) * w)), bz = Math.max(-1.0, Math.min(1.0, (this.bias.z - fz) * w));
+    this.focus.x += (fx + bx - this.focus.x) * k;
+    this.focus.z += (fz + bz - this.focus.z) * k;
     this.focus.y += (target.y - this.focus.y) * (snap ? 1 : 1 - Math.exp(-dt * 3));
     const cam = this.cam;
     const d = this.dist;

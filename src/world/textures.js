@@ -31,6 +31,7 @@ function facetPoly(g, rng, cx, cy, r, n = 7, squash = 1) {
 /** Draws clustered faceted snow drifts: each drift is a cluster of overlapping facets
  *  with a soft blue shadow edge and a few loose flakes around it. density 0..1+ */
 function snowPatches(g, w, h, rng, density, size = 1, wrap = true) {
+  if (!(density > 0)) return;
   const n = Math.max(1, Math.floor(9 * density * (w * h) / (512 * 512)));
   const offs = wrap ? [[0, 0], [w, 0], [-w, 0], [0, h], [0, -h], [w, h], [-w, -h], [w, -h], [-w, h]] : [[0, 0]];
   for (let i = 0; i < n; i++) {
@@ -63,19 +64,20 @@ function noise(g, w, h, rng, alpha, n = 3000, size = 2) {
   }
 }
 
-export function roofTexture(seed, snow = 0.6) {
-  return make(`roof${seed}_${snow}`, 512, 512, (g, w, h) => {
+/** Clay tile roof; snow 0 gives bare tile. tile/tileDark override the colors (muted, weathered tile for the no-snow look). */
+export function roofTexture(seed, snow = 0.6, tile = PAL.tile, tileDark = PAL.tileDark) {
+  return make(`roof${seed}_${snow}_${tile}`, 512, 512, (g, w, h) => {
     const rng = mulberry32(seed);
-    g.fillStyle = PAL.tileDark; g.fillRect(0, 0, w, h);
+    g.fillStyle = tileDark; g.fillRect(0, 0, w, h);
     const cols = 16, rows = 12, cw = w / cols, rh = h / rows;
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const x = c * cw, y = r * rh;
         const tone = 0.85 + rng() * 0.3;
         const grd = g.createLinearGradient(x, 0, x + cw, 0);
-        grd.addColorStop(0, shade(PAL.tileDark, tone * 0.9));
-        grd.addColorStop(0.45, shade(PAL.tile, tone * 1.12));
-        grd.addColorStop(1, shade(PAL.tileDark, tone * 0.8));
+        grd.addColorStop(0, shade(tileDark, tone * 0.9));
+        grd.addColorStop(0.45, shade(tile, tone * 1.12));
+        grd.addColorStop(1, shade(tileDark, tone * 0.8));
         g.fillStyle = grd;
         g.beginPath(); g.moveTo(x + 2, y + rh); g.lineTo(x + 2, y + 5); g.quadraticCurveTo(x + cw / 2, y - 3, x + cw - 2, y + 5); g.lineTo(x + cw - 2, y + rh); g.fill();
       }
@@ -83,6 +85,7 @@ export function roofTexture(seed, snow = 0.6) {
     }
     // snow blanket: solid cover from the ridge (canvas top) down to a jagged, faceted edge,
     // a few tiles poking through, loose clumps below the edge, bare tile at the eaves (concept 05/11)
+    if (!(snow > 0)) return;
     const edgeY = h * (0.5 + 0.25 * snow);
     const pts = [[0, 0], [w, 0]];
     for (let x = w; x >= 0; x -= w / 18) pts.push([x, edgeY + (rng() - 0.5) * h * 0.22 + (x === w || x === 0 ? 0 : 0)]);
@@ -158,6 +161,17 @@ export function sandTexture(seed = 4, snow = 0.6) {
     for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(120,95,60,${0.05 + rng() * 0.07})`; facetPoly(g, rng, rng() * w, rng() * h, 20 + rng() * 60, 6); g.fill(); }
     noise(g, w, h, rng, 0.08, 4000, 2);
     snowPatches(g, w, h, rng, snow, 1.3);
+  });
+}
+
+/** Wet mud: a dark brown base with a few broad wetter patches and a faint sheen (broad, low-detail). */
+export function mudTexture(seed = 8) {
+  return make(`mud${seed}`, 256, 256, (g, w, h) => {
+    const rng = mulberry32(seed);
+    g.fillStyle = '#4f3f30'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 9; i++) { g.fillStyle = `rgba(40,30,20,${0.12 + rng() * 0.14})`; facetPoly(g, rng, rng() * w, rng() * h, 30 + rng() * 50, 7, 0.7); g.fill(); }
+    for (let i = 0; i < 4; i++) { g.fillStyle = `rgba(140,128,112,${0.07 + rng() * 0.06})`; facetPoly(g, rng, rng() * w, rng() * h, 14 + rng() * 22, 6, 0.5); g.fill(); }
+    noise(g, w, h, rng, 0.05, 900, 2);
   });
 }
 

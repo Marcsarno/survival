@@ -5,7 +5,7 @@ import { footprintTexture, pawprintTexture } from '../world/textures.js';
 // (instance color multiplies the texture), so old tracks disappear without transparency sorting.
 // The pool is bounded (max prints); the oldest print is reused when it is full.
 export class Footprints {
-  constructor(scene, max = 900, paw = false, life = paw ? 90 : 150) {
+  constructor(scene, max = 900, paw = false, life = paw ? 90 : 150, { tint = '#7f8fb3', night = '#4a5878' } = {}) {
     this.max = max; this.i = 0; this.life = life;
     const g = new THREE.PlaneGeometry(paw ? 0.2 : 0.2, paw ? 0.2 : 0.36);
     g.rotateX(-Math.PI / 2);
@@ -28,7 +28,7 @@ export class Footprints {
     this.strength = new Float32Array(max);
     scene.add(this.mesh);
     this.time = 0;
-    this.tint = new THREE.Color('#7f8fb3'); this.clear = new THREE.Color(1, 1, 1);
+    this.tint = new THREE.Color(tint); this.nightTint = new THREE.Color(night); this.clear = new THREE.Color(1, 1, 1);
     this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._c = new THREE.Color();
     this.count = 0;
   }
@@ -64,6 +64,6 @@ export class Footprints {
       this.mesh.setColorAt(k, tint);
     }
     this.mesh.instanceColor.needsUpdate = true;
-    this.mesh.material.color.copy(night ? new THREE.Color('#4a5878') : this.tint);
+    this.mesh.material.color.copy(night ? this.nightTint : this.tint);
   }
 }

@@ -1,58 +1,85 @@
 # Current state
 
-Last updated 2026-09-30. The project is now the **opening-route slice** (commit after `c98a538` on `main`). It is live at https://sarno-survive.vercel.app (deployed 2026-09-30; the playtest passed 20 of 20 against the live site). The sandbox that preceded it is at git tag `baseline-sandbox-2026-09-30`.
+Last updated 2026-09-30. The project is **opening pass 2**, built to Marc's direction after he stopped pass 1:
+- **Marc:** his own Tripo model.
+- **Look:** his five style images as the visual target, with real assets, textures and Blender.
+- **Route:** a varied walk ending at a locked gate he climbs, then the house, angled top-right.
+- **Pace:** no mud route and no sprint.
+- **Lines:** text only, no AI voice.
 
-The visual production record is in `hub/` (open `hub/index.html` or run `npm run hub`). Keep it updated as work lands; see `hub/README.md`.
+Builds:
+- **Pass 1 (rejected):** a log, a mud split, graybox. Never committed.
+- **Slice v1 (the long route):** at tag `baseline-opening-route-2026-09-30`. It is still what the live site <https://sarno-survive.vercel.app> runs.
+- **The sandbox:** at tag `baseline-sandbox-2026-09-30`.
+
+The visual record is `hub/` (`npm run hub`), **Opening redesign** tab.
 
 ## What works (agent-tested; see PLAYTEST.md)
 
-- **Route:** shelter → dead-end street with four houses → backyard gate (E to open) → woods (pond, woodshed) → deeper snowy trail → the house. About 350 m. An agent walking straight took about 2 min 20 s.
-- **Camera:** fixed isometric angle looking north, tracking with a look-ahead. Distance is authored per section (wider on the street and at the house, tighter in the woods). No rotation, zoom keys or cinematic mode.
-- **Movement:**
-  - Acceleration and deceleration, turn weight, and speed by ground (pavement 3.2, trail 2.95, snow 2.6, deep trail 2.3, deep off-trail 1.95 m/s). Jog is ×1.42 (×1.25 in deep snow).
-  - Collisions slide.
-  - The route corridor is a safety net that sits behind visible boundaries.
-- **Animation (stand-in):** Idle, Walk and Run blend by speed. Walk and Run are phase-locked at the stride measured from the foot bones. The model now faces its direction of travel: the baseline walked backwards.
-- **Footprints:**
-  - Placed at the foot bone at each foot contact of the gait phase.
-  - Bounded pool of 700 with a 15-minute fade, so the whole walk stays visible.
-  - Deeper, darker prints in deep snow; faint prints on pavement.
-- **Atmosphere:**
-  - Light is authored by route progress, from blue hour to dark.
-  - Snowfall and fog tighten in the deep trail.
-  - The warm fire and lantern at the shelter are the only warm light until the house windows and porch lanterns.
-- **End and restart:** an automatic arrival trigger at the porch fades to an end card with the walk time. "Walk it again", R, or Pause → Restart route resets position, gate, prints, timer and light.
-- **Phone:** floating joystick on the left, E / jog / lantern buttons on the right, and the E button lights up when something is in reach. No page scroll or zoom.
-- **Removed from this slice:** inventory and its UI, stash, shelter upgrades, hunger, warmth and health meters, goals, map, combat, the infected, the stray dog, weather squalls and saving. The code is in the baseline tag.
+- **The walk:** the seawall promenade → the pump house → east into the park → her prints in the playground sand → north up a leafy lane → the bunny → a locked gate → over it → the house, angled top-right with its front facing south-west → "Stay there." → end card.
+  - An agent takes about 94 s.
+  - A beat comes every 8–15 s, except park → bunny (about 23 s).
+- **Marc:** the Tripo model with its rig.
+  - Walk plays at its own pace (about 1.25 m/s, slower on sand). There is no run.
+  - Idle is a held neutral pose with breathing.
+  - His head turns toward the swing, the prints, the bunny and the house.
+  - At the gate he kicks the latch (the Frustrated clip), then climbs it (the Climb clip, scaled to the gate) and drops down the far side.
+- **Story:** one-time triggers and one text queue (no overlapping lines). Speaker-labeled lines plus italic sound captions. Restart resets everything.
+- **Look:**
+  - **Blender kit** (`blender/build_kit.py`): trees, palms, shrubs and palmettos from generated leaf textures; four houses with clay-tile or flat roofs; fences, the gate and the playground; dock, cooler, bunny and branch.
+  - **Poly Haven:** textures, HDRI and props.
+  - **Poly Pizza:** vehicles and the rowboat.
+  - **Ground:** splat-mapped (grass, leaf litter, sand, dirt).
+  - **Water:** animated, with sky reflections.
+  - **Light:** golden-hour sun that sinks along the walk, candle-lit windows.
+  - **Ambience:** swaying foliage, a swing that keeps moving, a bobbing boat, drifting dust and leaves, birds now and then.
+- **Sound (procedural placeholders):** wind, insects, water by the seawall, the swing creak, footsteps by surface, the gate rattle, the door, a tension drone.
+- **Size:** about 11 MB of assets.
+  - Emulated phone, 4× CPU throttle, desktop GPU: 60 fps at every checkpoint.
+  - 230–320k triangles and 200–285 draw calls on screen.
 
 ## Known issues / limitations
 
-- **No physical phone test.** The touch checks ran in Chromium emulating a 390×844 viewport, with scripted input.
-- **Character size on phones:** Marc is about 4–5% of screen height in portrait. That trades against the narrow portrait width, which is about 10 m across at the player. Needs Marc's judgment on a real phone.
-- **Gait:** at 2.6–3.2 m/s the walk/run blend can read as a brisk power-walk. Slower walking would lengthen the route. Final animation is deferred until a final model exists.
-- **Narrow stance:** the stand-in's feet leave an almost single-file track.
-- **Trees near the camera** render as large dark canopies at the bottom of the frame at night. The see-through circle only clears the area around the player.
-- **The first glimpse** of the house's warm light appears only at the top edge of the frame near the end of the deep trail. It could be stronger.
-- **Walk time with exploration** has not been measured with a person.
-- **Clips in `hub/media`** are canvas recordings: no HUD, 43–60 fps while recording.
+- **No human playtest yet, and no physical phone.**
+- **The look:** much closer to the references but not there yet.
+  - Open ground (the park) reads flat.
+  - No ambient occlusion or contact shadows.
+  - Foliage is generated leaf cards, not painted art.
+- **The climb** reuses a ledge-climb clip, then a dropped landing; it reads at game distance but is not a true over-the-gate animation.
+- **No idle clip:** idle is a held pose.
+- **Placeholders:**
+  - The argument and "Stay there." are placeholder lines.
+  - All sound is a procedural placeholder.
+- **The pharmacy strip** (reference 8) is not in this route.
 
 ## Next steps (suggested)
 
-1. Marc plays on a phone and judges camera distance, character size, pacing and the house reveal.
-2. Marc decides the approach's story beats (for example the distant "DAD!", or a voice from the house). None were added on purpose.
-3. Bring in a final Marc model (Tripo was mentioned), then retune the gait blend and use true contact events from the new rig (`Player.onFootfall` is the hook).
+1. Marc plays it and says what is wrong.
+2. Then the next visual pass (ground clutter, contact shadows, a better landing, an idle clip) or the door confrontation.
+3. Deploy when Marc wants it live.
 
 ## Deployment
 
-- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. The live URL is <https://sarno-survive.vercel.app>.
-- **Linking:** `.vercel/project.json` links this folder to the project. It is gitignored, so a fresh clone needs `npx vercel link --yes --project sarno-survive --scope marcsarno` once.
-- **Redeploy:** run `npx vercel whoami` first; it should print `marc731-6361`. Then run `npm run deploy`. Vercel builds with `vercel.json` (`npm run build`, output in `dist/`). `.vercelignore` keeps the Blender, source-asset and hub folders out of the upload.
-- **Verify live:** `node tools/playtest.mjs --url=https://sarno-survive.vercel.app/`
-
-## Starting a new chat
-
-Open this folder in Claude Code and say something like: "Read CLAUDE.md and docs/STATE.md, then let's improve X." Before any Vercel command, confirm the account is marc731, not hornerxpress.
+- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (currently slice v1).
+- **Redeploy:**
+  - Run `npx vercel whoami`; it should print `marc731-6361`.
+  - Then run `npm run deploy`.
+  - `.vercel/project.json` is gitignored. A fresh clone needs `npx vercel link --yes --project sarno-survive --scope marcsarno` once.
 
 ## How to continue
 
-Read `README.md`, then `docs/DESIGN.md`, then the hub. Run `npm run dev` while working. After a change, run `npm run playtest` (all checks should pass), look at the screenshots, capture a new hub set with `node tools/capture.mjs --set=<name>`, and update `hub/data.js`.
+- **Read first:** `README.md`, then `docs/DESIGN.md` (**Opening, pass 2**), then the hub.
+- **Assets pipeline:**
+  - `node tools/fetch-polyhaven.mjs` and `node tools/fetch-assets.mjs` download the sources.
+  - Blender builds the models (Blender 5.2 path in package.json):
+    - `blender --background --factory-startup --python blender/build_kit.py -- [foliage|buildings|props]`
+    - `blender --background --factory-startup --python blender/build_marc.py -- <fbx> public/assets/models/marc.glb`
+  - `node tools/optimize-assets.mjs` makes the WebP textures and compressed models.
+- **After a change:**
+  - `npm run playtest` (13 checks).
+  - `node tools/walkthrough.mjs` (screenshots every few seconds plus beat times).
+  - `node tools/hub-timings.mjs`, then update `hub/data.js`.
+- **Dev aids:**
+  - `node tools/smoke.mjs --marks=<dir>` shoots every checkpoint.
+  - `?cam=fov,dist,pitch,lead` gives a test camera.
+  - `?dev=1` lets keys 1–7 jump to checkpoints; `?debug=1` shows an overlay.

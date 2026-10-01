@@ -10,7 +10,10 @@ import { mulberry32, pick } from '../core/util.js';
 const BOX = new THREE.BoxGeometry(1, 1, 1);
 const CYL6 = new THREE.CylinderGeometry(0.5, 0.5, 1, 6);
 const CYL8 = new THREE.CylinderGeometry(0.5, 0.5, 1, 8);
-const SNOW = () => stdMat(PAL.snow, { roughness: 0.8 });
+// Snow caps, sills and drifts. setSnowy(false) drops them (the opening redesign tests a no-snow look).
+let SNOWY = true;
+export function setSnowy(v) { SNOWY = v; }
+const SNOW = () => (SNOWY ? stdMat(PAL.snow, { roughness: 0.8 }) : null);
 const DRIFT = new THREE.IcosahedronGeometry(1, 0);
 
 /** place a unit box: center (x,y,z) in local space, size (sx,sy,sz) */
@@ -59,8 +62,10 @@ function hipRoofGeometry(w, d, rise, flatTop = 0) {
 }
 
 export function roof(b, P, w, d, y, rise, seed, snow = 0.6, flatTop = 0) {
+  if (!SNOWY) snow = 0;
   const g = hipRoofGeometry(w, d, rise, flatTop);
-  const mat = stdMat('#ffffff', { map: roofTexture(seed % 4, snow), roughness: 0.85 });
+  const map = SNOWY ? roofTexture(seed % 4, snow) : roofTexture(seed % 4, 0, '#8a5240', '#5e3428'); // weathered, muted tile without snow
+  const mat = stdMat('#ffffff', { map, roughness: 0.85 });
   b.add(g, mat, P.clone().multiply(mtx(0, y, 0)));
   // underside (soffit)
   box(b, P, stdMat(PAL.trim), 0, y - 0.06, 0, w - 0.1, 0.12, d - 0.1);

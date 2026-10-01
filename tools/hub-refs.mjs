@@ -14,6 +14,8 @@ fs.mkdirSync(OUT, { recursive: true });
 
 // keep in sync with HUB.art.refs / HUB.characters.future in hub/data.js
 const FILES = [
+  // the opening redesign (2026-09-30): three simplified concept references
+  'opening-redesign-handoff/01-woods-and-log.png', 'opening-redesign-handoff/02-bunny-discovery.png', 'opening-redesign-handoff/03-car-and-house.png',
   'concept-art/01-rescue-approach.png', 'concept-art/06-snowy-woodland.png', 'concept-art/02-family-homecoming.png', 'concept-art/03-supply-route.png',
   'concept-art/home-and-decisions/09-home-woodland.png', 'concept-art/home-and-decisions/10-home-house.png', 'concept-art/home-and-decisions/11-home-pavilion.png',
   'concept-art/home-and-decisions/12-gameplay-two-routes.png', 'concept-art/environment-studies/03-night-lantern.png', 'concept-art/environment-studies/05-residential-street.png',

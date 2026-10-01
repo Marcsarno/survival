@@ -15,23 +15,35 @@ export const MODEL_LIST = [
 export class Assets {
   constructor() { this.models = {}; this.loader = new GLTFLoader(); this.loader.setMeshoptDecoder(MeshoptDecoder); }
 
-  async loadAll(onProgress) {
+  /** list: the models this build needs. dropSnow: remove the snow-cap parts (meshes using the Snow material). flat: force flat shading (the old faceted style). */
+  async loadAll(onProgress, list = MODEL_LIST, { dropSnow = false, flat = true } = {}) {
     let done = 0;
-    await Promise.all(MODEL_LIST.map(async (name) => {
+    await Promise.all(list.map(async (name) => {
       const gltf = await this.loader.loadAsync(`./assets/models/${name}.glb`);
+      if (dropSnow) {
+        const drop = [];
+        let leaf = null;
+        gltf.scene.traverse((o) => { if (o.isMesh && o.material.name === 'PalmLeaf') leaf = o.material; });
+        gltf.scene.traverse((o) => {
+          if (!o.isMesh) return;
+          if (o.material.name === 'Snow') drop.push(o);
+          else if (o.material.name === 'SnowLeaf' && leaf) o.material = leaf;
+        });
+        for (const o of drop) o.parent.remove(o);
+      }
       gltf.scene.traverse((o) => {
         if (o.isMesh) {
           o.castShadow = true; o.receiveShadow = true;
           const mats = Array.isArray(o.material) ? o.material : [o.material];
           for (const m of mats) {
-            m.flatShading = true;
+            if (flat) m.flatShading = true;
             if (m.name.includes('Glow')) { m.emissiveIntensity = 3; m.toneMapped = false; }
             m.needsUpdate = true;
           }
         }
       });
       this.models[name] = gltf;
-      done++; onProgress?.(done / MODEL_LIST.length, name);
+      done++; onProgress?.(done / list.length, name);
     }));
   }
 

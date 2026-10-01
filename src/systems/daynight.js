@@ -17,11 +17,21 @@ const KEYS = [ // hour, sky, sunColor, sunIntensity, hemiSky, hemiGround, hemiIn
   [20.5, '#18223a', '#a8bcec', 1.0, '#44588a', '#252c42', 1.0, '#1e2a48', 1.0],
   [24, '#0f1728', '#9db3e6', 0.85, '#34466e', '#1d2436', 0.75, '#18213a', 1.0],
 ];
-const cols = KEYS.map((k) => k.map((v) => (typeof v === 'string' ? new THREE.Color(v) : v)));
+// A muted, overcast late afternoon into dusk (slate-brown and olive): the opening redesign, no snow.
+export const MUTED_KEYS = [
+  [0, '#1f2128', '#8f97b0', 0.5, '#3a3f50', '#1e1c1a', 0.6, '#24262c', 1.0],
+  [16, '#7d776c', '#f0d2a8', 3.0, '#c4bead', '#5d5444', 1.5, '#77716a', 1.0],
+  [17.5, '#6e675e', '#efc496', 2.7, '#b8b09e', '#574c3d', 1.45, '#6a645c', 1.0],
+  [18.5, '#4d4b50', '#dca682', 1.9, '#9a9aa2', '#463d33', 1.25, '#55524f', 1.0],
+  [19.5, '#2f323b', '#a99aa0', 0.6, '#59607a', '#28241f', 0.7, '#34373f', 1.0],
+  [24, '#1f2128', '#8f97b0', 0.5, '#3a3f50', '#1e1c1a', 0.6, '#24262c', 1.0],
+];
+const toCols = (keys) => keys.map((k) => k.map((v) => (typeof v === 'string' ? new THREE.Color(v) : v)));
 
 export class DayNight {
-  constructor(scene, renderer, quality) {
-    this.scene = scene; this.renderer = renderer;
+  /** keys: the light table. minSunY: lowest sun elevation factor (a higher sun gives shorter shadows). */
+  constructor(scene, renderer, quality, keys = KEYS, { minSunY = 0.45 } = {}) {
+    this.scene = scene; this.renderer = renderer; this.cols = toCols(keys); this.minSunY = minSunY;
     this.hour = 8; this.day = 1;
     this.sun = new THREE.DirectionalLight('#fff', 2.5);
     this.sun.castShadow = true;
@@ -48,7 +58,7 @@ export class DayNight {
   }
 
   apply(focus) {
-    const h = this.hour;
+    const h = this.hour, cols = this.cols;
     let i = 0; while (i < cols.length - 2 && cols[i + 1][0] <= h) i++;
     const a = cols[i], b = cols[i + 1];
     const t = (h - a[0]) / (b[0] - a[0]);
@@ -64,7 +74,7 @@ export class DayNight {
     // the sun swings from south-east to south-south-west but stays on the camera side, so faces read lit;
     // at dusk it hands over smoothly to the moon (no jump in shadow direction)
     const hs = Math.min(19.5, Math.max(6, h)), ang = ((hs - 6) / 13.5) * Math.PI, tday = (hs - 6) / 13.5;
-    const sunDir = new THREE.Vector3(lerp(1.0, -0.35, tday), Math.max(0.45, Math.sin(ang)) * 1.1, 0.9).normalize();
+    const sunDir = new THREE.Vector3(lerp(1.0, -0.35, tday), Math.max(this.minSunY, Math.sin(ang)) * 1.1, 0.9).normalize();
     const moonDir = new THREE.Vector3(-0.45, 1.0, 0.6).normalize();
     const toMoon = h > 12 ? smoothstep(19.1, 19.9, h) : 1 - smoothstep(5.2, 6.2, h);
     const dir = sunDir.lerp(moonDir, toMoon).normalize();

@@ -68,7 +68,71 @@ function routeSvg(route) {
   return s;
 }
 
+/** A small top-down map: several polylines (x, z in meters, north up), shaded area bands and labeled markers. */
+function mapSvg(m) {
+  const pts = m.lines.flatMap((l) => l.pts);
+  const xs = pts.map((p) => p[0]), zs = pts.map((p) => p[1]);
+  const pad = 9, x0 = Math.min(...xs) - pad - 14, x1 = Math.max(...xs) + pad + 22, z0 = Math.min(...zs) - pad, z1 = Math.max(...zs) + pad;
+  const W = 360, Hh = Math.round(W * (z1 - z0) / (x1 - x0));
+  const sx = (x) => ((x - x0) / (x1 - x0)) * W, sz = (z) => ((z - z0) / (z1 - z0)) * Hh;
+  let s = `<svg class="route-svg" viewBox="0 0 ${W} ${Hh}" role="img" aria-label="${esc(m.aria || 'Map, north at the top')}">`;
+  s += `<rect width="${W}" height="${Hh}" fill="var(--snow)" rx="8"/>`;
+  for (const b of m.bands || []) {
+    const ya = sz(Math.min(...b.z)), yb = sz(Math.max(...b.z));
+    s += `<rect x="0" y="${ya}" width="${W}" height="${yb - ya}" fill="${b.color}" opacity=".28"/><text x="5" y="${ya + 12}" font-size="10" fill="var(--mute)">${esc(b.name)}</text>`;
+  }
+  for (const l of m.lines) {
+    const p = l.pts.map(([x, z]) => `${sx(x).toFixed(1)},${sz(z).toFixed(1)}`).join(' ');
+    s += `<polyline points="${p}" fill="none" stroke="${l.color}" stroke-width="${l.width || 4}" stroke-linejoin="round" stroke-linecap="round" ${l.dash ? `stroke-dasharray="${l.dash}"` : ''}/>`;
+  }
+  for (const k of m.markers || []) {
+    s += `<circle cx="${sx(k.x)}" cy="${sz(k.z)}" r="5" fill="${k.color || '#c9772e'}" stroke="#fff" stroke-width="1.5"/>`;
+    s += `<text x="${sx(k.x) + (k.left ? -8 : 8)}" y="${sz(k.z) + 4}" font-size="11" fill="var(--ink)" text-anchor="${k.left ? 'end' : 'start'}">${esc(k.label)}</text>`;
+  }
+  return s + `<text x="${W - 30}" y="16" font-size="12" fill="var(--ink)">N ↑</text></svg>`;
+}
+
+/** Beat times on a seconds axis, one row per play-through. */
+function timelineSvg(runs, names) {
+  const max = Math.ceil(Math.max(...runs.map((r) => r.end)) / 10) * 10, W = 900, rowH = 62, L = 110, R = 18, Hh = runs.length * rowH + 30;
+  const x = (t) => L + (t / max) * (W - L - R);
+  let s = `<svg viewBox="0 0 ${W} ${Hh}" style="width:100%;height:auto" role="img" aria-label="Beat times for each play-through">`;
+  for (let t = 0; t <= max; t += 10) s += `<line x1="${x(t)}" x2="${x(t)}" y1="8" y2="${Hh - 20}" stroke="var(--line)"/><text x="${x(t)}" y="${Hh - 6}" font-size="11" fill="var(--mute)" text-anchor="middle">${t}s</text>`;
+  runs.forEach((r, i) => {
+    const y = 26 + i * rowH + 14;
+    s += `<text x="0" y="${y + 4}" font-size="12" fill="var(--ink)">${esc(r.label)}</text><line x1="${x(0)}" x2="${x(r.end)}" y1="${y}" y2="${y}" stroke="var(--mute)" stroke-width="2"/>`;
+    Object.entries(r.beats).filter(([id]) => names[id]).forEach(([id, t], k) => {
+      const up = k % 2 === 0;
+      s += `<circle cx="${x(t)}" cy="${y}" r="4" fill="#c9772e"><title>${esc(names[id])} ${t}s</title></circle><text x="${x(t)}" y="${up ? y - 9 : y + 17}" font-size="10" fill="var(--ink)" text-anchor="middle">${esc(names[id])}</text>`;
+    });
+  });
+  return s + '</svg>';
+}
+
+const list = (items, html = false) => `<ul>${items.map((p) => `<li>${html ? p : esc(p)}</li>`).join('')}</ul>`;
+
 const PAGES = {
+  redesign() {
+    const r = H.redesign;
+    const runRows = r.runs.map((x) => ({ run: x.label, total: x.end.toFixed(1) + ' s', gaps: x.gaps, note: x.note }));
+    return `<h1>Opening redesign</h1><p class="mute">Updated ${esc(r.updated)}. ${esc(r.intro)}</p>
+      <div class="card"><h3>Play it</h3>${list(r.launch, true)}</div>
+      <h2>Before: pass 1</h2><div class="card">${list(r.diagnosis)}</div>${gallery(r.before)}
+      <h2>Concept references for this pass</h2><p class="mute">${esc(r.refsNote)}</p>${gallery(r.refs, true)}
+      <h2>Route and beats</h2>
+      <div class="pair"><div class="card">${mapSvg(r.map)}<p class="mute" style="font-size:13px">${esc(r.map.legend)}</p></div>
+      <div class="card"><h3>Sequence</h3><ol>${r.beats.map((b) => `<li>${chip(b.status)}<b>${esc(b.beat)}</b> <span class="mute">${esc(b.mud)}</span></li>`).join('')}</ol><p class="mute" style="font-size:13px">${esc(r.beatNote)}</p></div></div>
+      ${table(r.beats, [['status', 'Status'], ['beat', 'Beat'], ['purpose', 'Purpose'], ['trigger', 'Trigger'], ['behavior', 'Behavior'], ['mud', 'Agent, mud'], ['sidewalk', 'Agent, sidewalk']])}
+      <h2>Observed timing</h2><p class="mute">${esc(r.timingNote)}</p><div class="card">${timelineSvg(r.runs, r.beatNames)}</div>
+      ${table(runRows, [['run', 'Play-through'], ['total', 'Start → end card'], ['gaps', 'Gaps between beats'], ['note', 'Notes']])}
+      <h2>After: captures</h2><p class="mute">${esc(r.afterNote)}</p>${gallery(r.after)}
+      <h2>Clips</h2>${gallery(r.clips, true)}
+      <h2>Before and after</h2>${r.compare.map((it) => `<div class="card"><h3>${esc(it.title)}</h3><div class="pair">${media({ ...it.before, title: 'Before · ' + (it.before.title || '') })}${media({ ...it.after, title: 'After · ' + (it.after.title || '') })}</div><p>${esc(it.note)}</p></div>`).join('')}
+      <h2>Current problems</h2>${list(r.problems)}
+      <h2>Not verified</h2>${list(r.unverified)}
+      <h2>Next steps</h2>${list(r.next)}
+      <h2>Decisions and assumptions</h2>${list(r.assumptions)}`;
+  },
   overview() {
     const o = H.overview;
     return `<h1>Overview</h1><p class="mute">Updated ${esc(H.updated)}. ${esc(o.intro)}</p>
@@ -76,14 +140,14 @@ const PAGES = {
       <div class="card"><h3>Playable build</h3><ul>${o.builds.map((b) => `<li>${chip(b.status)}${b.href ? `<a href="${esc(b.href)}">${esc(b.label)}</a>` : esc(b.label)} <span class="mute">${esc(b.note)}</span></li>`).join('')}</ul></div>
       <div class="card"><h3>Controls</h3>${table(o.controls, [['action', 'Action'], ['keys', 'Keyboard'], ['touch', 'Touch']])}</div>
       <h2>Progress</h2>${table(o.progress, [['status', 'Status'], ['item', 'Item'], ['note', 'Notes']])}
-      ${o.checks ? `<h2>Latest automated checks</h2><p class="mute">From <code>npm run playtest</code> (playtest-output/results.json). Agent-driven, not a human playtest.</p>${table(o.checks.map(([name, what]) => ({ status: 'agent-tested', name, what })), [['status', 'Status'], ['name', 'Check'], ['what', 'Result']])}` : ''}
+      ${o.checks?.length ? `<h2>Latest automated checks</h2><p class="mute">From <code>npm run playtest</code> (playtest-output/results.json). Agent-driven, not a human playtest.</p>${table(o.checks.map(([name, what, st]) => ({ status: st || 'agent-tested', name, what })), [['status', 'Status'], ['name', 'Check'], ['what', 'Result']])}` : ''}
       <h2>Next steps</h2><ul>${o.next.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <h2>Not verified / open</h2><ul>${o.unverified.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>
       <h2>How this hub works</h2><ul>${o.howto.map((n) => `<li>${esc(n)}</li>`).join('')}</ul>`;
   },
   route() {
     const r = H.route;
-    return `<h1>Opening route</h1><p>${esc(r.intro)}</p>
+    return `<h1>Long route (slice v1)</h1>${r.superseded ? `<div class="card">${chip('superseded')} ${esc(r.superseded)}</div>` : ''}<p>${esc(r.intro)}</p>
       <div class="pair"><div class="card">${routeSvg(r)}<p class="mute" style="font-size:13px">${esc(r.legend)}</p></div>
       <div class="card"><h3>Pacing</h3>${table(r.sections, [['name', 'Section'], ['status', 'Status'], ['feel', 'Intended feel'], ['time', 'Time']])}</div></div>
       <h2>Locations</h2>${r.sections.map((s) => `<div class="card"><h3>${chip(s.status)}${esc(s.name)}</h3><p>${esc(s.detail)}</p>${s.shots?.length ? s.shots.map(vg).join('') : '<p class="mute">No gameplay capture of this section yet.</p>'}</div>`).join('')}
@@ -117,7 +181,7 @@ const PAGES = {
     return `<h1>Before and after</h1><p>${esc(c.intro)}</p>${c.items.map((it) => `<div class="card"><h3>${esc(it.title)}</h3><div class="pair">${media({ ...it.before, title: 'Before · ' + (it.before.title || '') })}${media({ ...it.after, title: 'After · ' + (it.after.title || '') })}</div><p>${esc(it.note)}</p></div>`).join('')}`;
   },
 };
-const TABS = [['overview', 'Overview'], ['route', 'Opening route'], ['art', 'Art & assets'], ['characters', 'Characters'], ['motion', 'Motion tests'], ['compare', 'Before & after']];
+const TABS = [['overview', 'Overview'], ['redesign', 'Opening redesign'], ['route', 'Long route (v1)'], ['art', 'Art & assets'], ['characters', 'Characters'], ['motion', 'Motion tests'], ['compare', 'Before & after']];
 
 function render() {
   const page = (location.hash.slice(1) || 'overview');

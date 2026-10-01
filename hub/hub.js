@@ -117,7 +117,7 @@ const PAGES = {
     const runRows = r.runs.map((x) => ({ run: x.label, total: x.end.toFixed(1) + ' s', gaps: x.gaps, note: x.note }));
     return `<h1>Opening redesign</h1><p class="mute">Updated ${esc(r.updated)}. ${esc(r.intro)}</p>
       <div class="card"><h3>Play it</h3>${list(r.launch, true)}</div>
-      <h2>Before: pass 1</h2><div class="card">${list(r.diagnosis)}</div>${gallery(r.before)}
+      <h2>Before this pass</h2><div class="card">${list(r.diagnosis)}</div>${gallery(r.before)}
       <h2>Concept references for this pass</h2><p class="mute">${esc(r.refsNote)}</p>${gallery(r.refs, true)}
       <h2>Route and beats</h2>
       <div class="pair"><div class="card">${mapSvg(r.map)}<p class="mute" style="font-size:13px">${esc(r.map.legend)}</p></div>

@@ -15,34 +15,34 @@ const tOf = (label, id) => { const r = T.runs.find((x) => x.label === label); re
 const beat = (id, b) => ({ ...b, id, mud: tOf('Agent · mud', id), sidewalk: tOf('Agent · sidewalk', id) });
 
 window.HUB = {
-  updated: '2026-09-30 (opening pass 2: Marc model, Blender kit, Poly Haven textures)',
+  updated: '2026-10-01 (neighborhood pass in progress)',
 
   redesign: {
-    updated: '2026-09-30, pass 2',
-    intro: 'Pass 2 of the opening, after Marc stopped pass 1 ("the path sucks… the whole thing is bad"). This pass follows his direction: his Tripo model of Marc, his five new style images, real art assets, textures and Blender, a varied walk, a locked gate Marc climbs instead of a log, no mud route, no sprint, no AI voice, and the house angled top-right with its front facing south-west. Rough but playable. Nothing here is approved by Marc; "agent-tested" means an automated run with normal controls, not a person.',
+    updated: '2026-10-01, neighborhood pass (in progress)',
+    intro: 'Pass 3 of the opening, to Marc’s neighborhood visual revision (claude-neighborhood-visual-revision.txt, 2026-10-01). It replaces the seawall start: Marc starts mid-search inside an abandoned South Florida neighborhood and the route runs among houses, side yards and a small park to the house. Keep the tree sway and the moving swing. Camera closer and a little lower. Restrained autumn color. Nothing here is approved by Marc; "agent-tested" means an automated run, not a person.',
     launch: [
-      'Local: <code>npm run dev</code>, then open <a href="http://localhost:5173/">http://localhost:5173/</a> and press Start. On a phone on the same Wi-Fi, open the <code>Network:</code> address Vite prints.',
-      'Controls: <b>WASD / arrows</b> or the left-thumb joystick to walk (one methodical pace, no run) · <b>E</b> (or the E button) to pick up, open and climb · <b>Esc</b> pause · <b>R</b> restart.',
-      'Checks: <code>npm run playtest</code> (13 checks). Then <code>node tools/hub-timings.mjs</code>.',
-      'Live: https://sarno-survive.vercel.app runs pass 2 (deployed 2026-10-01 at Marc’s request; playtest 13/13 against it).',
+      'Local: <code>npm run dev</code>, then open <a href="http://localhost:5173/">http://localhost:5173/</a> and press Start.',
+      'Baseline before this pass: git tag <code>baseline-opening-pass2-2026-10-01</code> (the seawall walk, live on https://sarno-survive.vercel.app until a redeploy).',
     ],
     diagnosis: [
-      'Pass 1 (agent-tested, rejected by Marc): a straight path with a trunk to step over, a mud route you could simply walk around, an abandoned car in a poor spot, and visuals far worse than before (snow off, flat brown ground, props made of code primitives, no Blender, no asset work).',
-      'Marc\u2019s direction for pass 2: push much harder on the look (find and use art assets, make textures, use Blender), his Marc model, a varied walk, the house top-right and angled, a locked gate instead of a log, no mud, no sprint, a methodical walk with weight, text instead of AI voice. The game itself is a character.',
-      'Process note: the agent will hand Marc a playable build earlier instead of running long test passes first.',
+      'The opening (pass 2, captured below before any change) starts on a long canal promenade: water, a long sidewalk, flat grass, a toppled chair and a cooler. It does not say "collapse" or "search" on the first screen.',
+      'The camera is high and far (about 50° down, Marc about 8% of the screen height): doors, windows and posture are hard to read.',
+      'Color: bland overall, noisy up close. The stucco texture reads as orange-and-black mottling; the clay roof tiles repeat in a high-contrast pattern; the shrubs are dark, speckled masses.',
+      'Ground: a lawn-like grass base with a uniform orange leaf strip for the path; no broken paving, mud, edges or raised grass.',
+      'Foliage: canopies between Marc and the camera show diagonal stripes. Inspection: the near-canopy fade in src/core/seethrough.js discards pixels with a diagonal-line pattern (mod(3x + 2y, 5)), not a real dither.',
+      'Direction for this pass: neighborhood start with a boarded house, a coherent cluster of interrupted life (flat-tired car, open suitcase, damaged fence), a legible route between properties with small muddy prints, one strong autumn canopy; the route relocates the existing beats; Arianna’s call turns the search into a run; a short muddy passage versus firm ground; the house reveal and the threatening voice.',
     ],
     before: [
-      { status: 'superseded', file: 'media/opening-v2/phone-search.jpg', title: 'Pass 1: start', note: 'Graybox: snow off, flat brown ground.' },
-      { status: 'superseded', file: 'media/opening-v2/phone-split.jpg', title: 'Pass 1: the mud split', note: 'You could just walk around the mud.' },
-      { status: 'superseded', file: 'media/opening-v2/phone-figure.jpg', title: 'Pass 1: car and house', note: 'The car placement and the house angle Marc did not like.' },
+      { status: 'superseded', file: 'media/neighborhood/before-opening.jpg', title: 'Before: the opening', note: 'Pass 2 start on the seawall promenade (game capture, 390×844).' },
+      { status: 'superseded', file: 'media/neighborhood/before-clue.jpg', title: 'Before: the bunny', note: 'Pass 2 lane: the leaf strip, the dark shrubs, the striped canopy top-left.' },
+      { status: 'superseded', file: 'media/neighborhood/before-house.jpg', title: 'Before: the house', note: 'Pass 2 yard: mottled orange stucco, high-contrast roof tiles.' },
+      { status: 'superseded', file: 'media/neighborhood/before-park.jpg', title: 'Before: the park', note: 'Pass 2 park: open flat ground.' },
     ],
-    refsNote: 'Marc\u2019s five style images for pass 2 (concept art, kept outside the repo in hub/refs-local/). They set the target: textured, painterly-realistic, warm low light, dense foliage masses, clean readable paths.',
+    refsNote: 'Marc’s two simplified concept images for this pass (kept outside the repo in hub/refs-local/). Used for model complexity and staging ideas, not as fixed layouts or palette.',
     refs: [
-      { status: 'reference', file: R + 'pass2-ref-4.webp', title: 'Bunny by the broken fence', note: 'Big trunk on the left, the house corner, prints leading on.', missing: REF_MISSING },
-      { status: 'reference', file: R + 'pass2-ref-5.webp', title: 'The seawall walk', note: 'Canal, dock and rowboat, cooler and toppled chair, fallen street lamp, a small building with a door.', missing: REF_MISSING },
-      { status: 'reference', file: R + 'pass2-ref-6.webp', title: 'Camp, seawall road, carport house', note: 'Palette and density; the carport with a station wagon.', missing: REF_MISSING },
-      { status: 'reference', file: R + 'pass2-ref-7.webp', title: 'The playground', note: 'Swing set, slide, tire tunnel, bench, rail fence, dirt path.', missing: REF_MISSING },
-      { status: 'reference', file: R + 'pass2-ref-8.webp', title: 'The pharmacy strip', note: 'Not in this route yet.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass3-ref-1.webp', title: 'Neighborhood: car, suitcase, broken gate', note: 'A boarded house ahead, a car with the trunk open, a suitcase, a broken fence gate, an autumn tree top-left.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass3-ref-2.webp', title: 'Side passage with prints', note: 'A path between walls and fences, small muddy prints, autumn leaves, a knocked-over bin.', missing: REF_MISSING },
+      { status: 'reference', file: R + 'pass2-ref-7.webp', title: 'The playground (pass 2 ref)', note: 'Kept for the swing.', missing: REF_MISSING },
     ],
     map: {
       legend: 'Solid blue: the walk. Meters; north is up. About 110 m from the seawall to the door.',

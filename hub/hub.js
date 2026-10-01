@@ -119,15 +119,17 @@ const PAGES = {
       <div class="card"><h3>Play it</h3>${list(r.launch, true)}</div>
       <h2>Before this pass</h2><div class="card">${list(r.diagnosis)}</div>${gallery(r.before)}
       <h2>Concept references for this pass</h2><p class="mute">${esc(r.refsNote)}</p>${gallery(r.refs, true)}
+      ${r.camera ? `<h2>Camera candidates</h2><p class="mute">${esc(r.camera.note)}</p>${gallery(r.camera.items, true)}<div class="card"><p>${esc(r.camera.chosen)}</p></div>` : ''}
       <h2>Route and beats</h2>
       <div class="pair"><div class="card">${mapSvg(r.map)}<p class="mute" style="font-size:13px">${esc(r.map.legend)}</p></div>
       <div class="card"><h3>Sequence</h3><ol>${r.beats.map((b) => `<li>${chip(b.status)}<b>${esc(b.beat)}</b> <span class="mute">${esc(b.mud)}</span></li>`).join('')}</ol><p class="mute" style="font-size:13px">${esc(r.beatNote)}</p></div></div>
-      ${table(r.beats, [['status', 'Status'], ['beat', 'Beat'], ['purpose', 'Purpose'], ['trigger', 'Trigger'], ['behavior', 'Behavior'], ['mud', 'Agent, mud'], ['sidewalk', 'Agent, sidewalk']])}
+      ${table(r.beats, [['status', 'Status'], ['beat', 'Beat'], ['purpose', 'Purpose'], ['trigger', 'Trigger'], ['behavior', 'Behavior'], ['mud', 'Phone, mud way'], ['firm', 'Phone, firm way']])}
       <h2>Observed timing</h2><p class="mute">${esc(r.timingNote)}</p><div class="card">${timelineSvg(r.runs, r.beatNames)}</div>
       ${table(runRows, [['run', 'Play-through'], ['total', 'Start → end card'], ['gaps', 'Gaps between beats'], ['note', 'Notes']])}
       <h2>After: captures</h2><p class="mute">${esc(r.afterNote)}</p>${gallery(r.after)}
       <h2>Clips</h2>${gallery(r.clips, true)}
       <h2>Before and after</h2>${r.compare.map((it) => `<div class="card"><h3>${esc(it.title)}</h3><div class="pair">${media({ ...it.before, title: 'Before · ' + (it.before.title || '') })}${media({ ...it.after, title: 'After · ' + (it.after.title || '') })}</div><p>${esc(it.note)}</p></div>`).join('')}
+      ${r.findings ? `<h2>What was wrong, and the fixes</h2>${list(r.findings)}` : ''}
       <h2>Current problems</h2>${list(r.problems)}
       <h2>Not verified</h2>${list(r.unverified)}
       <h2>Next steps</h2>${list(r.next)}

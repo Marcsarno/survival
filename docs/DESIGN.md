@@ -1,8 +1,110 @@
 # Design record
 
-This is the shared record of material decisions for the prototype. The user's vision notes and concept art live outside the repo (`Documents/Codex/2026-09-29/okay-so-there-s-a-few/outputs/`). The current project bible is `master-story-design-brief-2026-09-30.txt` in that folder. This file records what the build chose and why. **Later entries win:** "Opening, pass 2" supersedes everything below it wherever they conflict.
+This is the shared record of material decisions for the prototype. The user's vision notes and concept art live outside the repo (`Documents/Codex/2026-09-29/okay-so-there-s-a-few/outputs/`). The current project bible is `master-story-design-brief-2026-09-30.txt` in that folder. This file records what the build chose and why. **Later entries win:** the newest section (at the top) supersedes everything below it wherever they conflict.
 
-## Opening, pass 2 (2026-09-30, current)
+## Opening, neighborhood pass (2026-10-01, current)
+
+**Why:** Marc's visual revision (`claude-neighborhood-visual-revision.txt` in the Codex outputs folder, 2026-10-01). It supersedes earlier conflicting direction: no waterfront opening, no snow, no long forest approach. Marc starts mid-search inside an abandoned South Florida neighborhood.
+
+**Kept on purpose:**
+- the tree sway and the moving swing
+- Marc's model, walk, gate try and climb
+- the story triggers and Marc's lines
+- the house top-right with its front facing south-west, the figure and "Stay there."
+
+**What the brief changed:**
+- Arianna's call turns the search into a run.
+- A short muddy passage against firm ground.
+- A closer, slightly lower camera.
+- Restrained autumn color.
+- Worn ground.
+- Selective raised grass.
+
+**The traversal:** the brief asks for "a low log or fallen branch traversal in a neglected yard". Marc had chosen a gate over a log because it makes more sense in the world, so his locked gate stays as the traversal. It now sits in the neglected backyard, with snapped limbs against the fence nearby.
+
+### The walk (`src/world/level.js`, `src/systems/story.js`)
+| Beat | Where | What happens |
+|---|---|---|
+| search | the street (start) | "Arianna?" The boarded house ahead behind a low wall, its gate broken open; a car down on a flat front tire with its nose in the broken fence, a suitcase dropped open beside it and a box; a copper oak in the verge framing the left. |
+| prints | through the gate | "She was here." Her small prints in a mud patch. (Her prints appear only in five small mud patches along the way, four prints each.) |
+| call2 | the side passage (between the house and the neighbor's fence) | "Arianna!" Leaves drifted against the walls, a knocked-over bin, bags, raised grass at the wall bases, the AC unit. |
+| creak | the neglected backyard | Caption: "A swing creaks, somewhere ahead." A shed, a stump, an overturned chair, snapped limbs against the fence. |
+| locked / over | the backyard gate | E: he kicks at the latch, the gate rattles, "Locked." E: he climbs over. He can climb back. |
+| park | the small park | The swing set just right of the way, one seat still moving; his head turns to it. |
+| bunny | by the park's broken fence | E: "She wouldn't leave this." He carries it. |
+| urgency | 1.6 s later (or at the fence) | "Daddy!" (distant) / "Arianna!" The drone starts. **From here the same input runs.** |
+| fork | through the gap in the fence | Straight on: about 8 m of wet mud between a house and a walled garden. Right: a cracked concrete walk around the garden, about 22 m. Recorded on the end card. |
+| reveal | into the yard | The house top-right, front to the south-west, candle-lit windows. Marc slows to a walk; the figure leaves the window; "A door shuts inside the house." |
+| argument / stay | the yard | Two voices (placeholder lines, usually cut short), then "Stay there." Marc stops, the door opens a crack, end card. |
+
+**Layout:** about 75 m. All positions in meters, x east, z south.
+- Start (0.8, −0.3).
+- Front gate at z −3.4.
+- Boarded house centered (−4, −13.2); side passage x 1–4.2.
+- Backyard gate (0.45–1.6, −34).
+- Swing (5.2, −41.4); bunny (2.55, −48.1); park fence at z −49.2 with a gap at x 0.7–2.9.
+- Mud x 0.75–3.75, z −52.4 to −60.6.
+- Walled garden x 3.9–8.6; firm walk along x 9.9.
+- The house at (12.6, −74.2), rotated −45°.
+- The pass-2 seawall walk is at git tag `baseline-opening-pass2-2026-10-01`.
+
+**Camera** (`src/systems/camera.js`): fixed, looking north. Candidates were captured on the same views (hub → Opening redesign → Camera candidates); `?camset=` switches between them.
+- **Pass 2:** fov 46°, 17.5 m, 0.87 rad (50°); Marc about 8% of the screen height.
+- **A (chosen):** fov 42°, 14 m, 0.75 rad (43°), lead 0.45; Marc about 12%.
+- **B:** fov 40°, 12 m, 0.64 rad (37°), lead 0.6; Marc about 16%. Too narrow on a portrait phone: at the house the framing pushes Marc off the edge.
+- **Lead:** small, so Marc sits a little above the middle with the subtitle below him. The touch subtitle is 150 px from the bottom, the prompt 214 px.
+- **Zones** (zoom and bias):
+  - street 1.06, biased about 1 m north so the boarded windows clear the top
+  - front yard 1.0
+  - passage 0.96
+  - backyard 1.0
+  - park 1.04, toward the swing
+  - lane 0.98
+  - yard 1.1, toward the house
+- **Staging rule:** nothing tall stands just south of the route, because it would sit under the camera. The see-through circle keeps Marc visible; foliage within about 5 m in front of him dithers out (4×4 Bayer).
+
+**Marc** (`src/systems/player.js`): walking is unchanged. Before changing anything I played it and saw no start, stop, response or snag problem worth fixing.
+- **Walk:** concrete 1.3, leaves 1.22, grass 1.2 m/s; accel 3.2, decel 5.5 m/s²; turn 4.2 rad/s.
+- **Run (new):** the Run clip from his Tripo FBX (`build_marc.py` keeps walk, run, climb, frustrated_01).
+  - Its own pace is 4.48 m/s.
+  - The game runs at 3.6 (concrete), 3.5 (leaves), 3.45 (grass) and plays the clip at about 0.8×.
+  - Run accel 5.5 m/s².
+  - Walk and Run blend by speed between 1.56 and 2.6 m/s.
+  - Footsteps follow whichever gait dominates and are heavier when running.
+- **Mud:** walk 0.78, run 1.15 m/s (a wading walk); deep prints.
+- **Up axis:** every clip's hips track is read as y-up. A guess from the first frame picked z for the run and sank the hips to the ground.
+
+### Look
+- **Palette:** quiet neutral foundations with deliberate color.
+  - **Stucco:** one calm plaster (`white_plaster_rough_01`, the `diff_soft` variant: contrast 0.5, saturation 0.6) for every house, lifted about 1.45× because the plaster is mid-grey in linear light. Each house's vertex tint makes it faded cream (boarded house, hostage house), sand, pale teal (next door) or faded pink.
+  - **Wear:** broad and world-space (`addWeathering` in `materials.js`): an uneven splash line at the base, faint rain streaks below the eaves, large blotches.
+  - **Roofs:** a lower-contrast, less saturated clay tile (`diff_soft`) with a softer normal.
+  - **Paving:** slabs, curbs and porch concrete use the calm plaster tinted grey; the street is a desaturated cracked asphalt.
+- **Autumn:**
+  - Copper and rust canopies: the generated `leaves_autumn` atlas (rust, copper, ochre, muted gold, a turning quadrant), used on `oak_autumn_a/b` and `shrub_rust`. One strong copper oak frames the first screen; the others are placed sparingly.
+  - Palms and green shrubs stay, so it still reads as Florida.
+  - Fallen leaves are ground decals from a 2×2 `litter` atlas (dense drifts, sparse scatters): drifts against walls and fences, pools under the copper trees, a sparse scatter on the way. About 200 instanced quads in total.
+- **Ground** (splat shader in `level.js`):
+  - A grass base that varies between sage-olive and dry straw.
+  - Bare earth patches and along every wall and fence base.
+  - Leaf-littered worn trails that the noise breaks into patches (not a strip).
+  - Wet mud with standing-water puddles (low roughness).
+  - Broken paving: separate slabs with seams, a few missing, cracked or chipped, small heaves and raised edges; a curb; cracked asphalt.
+- **Raised grass:** three Blender tufts (`tuft_a/b/c`, crossing blade cards, darker at the base, some dry). Placed in clusters along wall and fence bases, the curb and a few neglected patches, with gaps, so they never cover everything.
+- **Shrubs:** a small consistent set (the green shrubs, `shrub_rust`, palmettos, two big-leaf plants `broadleaf_a/b`) with varied size and rotation, clustered at corners, walls and doors.
+- **Fixed in foliage** (it looked dark, speckled and striped):
+  1. **NaN texels:** the leaf painter raised sin(π) (slightly negative in float32) to a power, giving NaN beyond every leaf tip, saved as opaque black. About half of all leaf, frond, fan and grass pixels were black.
+  2. **Flipped normals:** three.js flips the normal of double-sided cards seen from behind, so clump normals pointed down. The wind shader now keeps the authored normal on both sides.
+  3. **Vertex colors are sRGB:** authored base shades arrive about squared, so the new plants use brighter bases.
+  4. **Striped dither:** the see-through and near-fade dithers were diagonal-line patterns. They are now a 4×4 Bayer dither.
+- **Light:**
+  - Golden hour from the west-south-west, sinking with progress.
+  - The final key is a little less orange (sun `#ffad74`).
+  - Shadow box ±18 m around the focus (sharper at the closer camera).
+  - Fog starts 16 m past the camera distance (the lower camera sees further).
+- **Size:** 7.6 MB downloaded at load.
+
+## Opening, pass 2 (2026-09-30, superseded by the neighborhood pass)
 
 **Why:** Marc stopped pass 1. In his words: the path, the beats and the pace "suck"; it wasn't clear where to go by the mud and you could just walk round it; the car was badly placed; and the look got "far far worse". Pass 1 used no assets and no Blender, turned snow off and used code primitives.
 

@@ -193,6 +193,45 @@ def branch(name):
     C.box_uv(bm, 0.2); C.paint(bm, (0.75, 0.66, 0.5)); C.new_obj(name + '_end', bm, ['Paint'], root)
     return root
 
+# ------------------------------------------------------------------ interrupted life (the first screen)
+def suitcase_open(name):
+    """A hard suitcase dropped open on the ground: faded navy shell, the lid fallen back, clothes half out."""
+    rng = random.Random(5)
+    root = _root(name)
+    W, D, H = 0.72, 0.48, 0.11
+    bm = bmesh.new()
+    C.cube(bm, (0, 0, H / 2), (W, D, H))                                  # bottom shell
+    lid = C.cube(bm, (0, D / 2 + D / 2 + 0.02, H * 0.45), (W, D, H * 0.9))   # lid, fallen open behind (hinge at +y)
+    bmesh.ops.rotate(bm, cent=(0, D / 2 + 0.02, 0.02), matrix=Matrix.Rotation(math.radians(-14), 3, 'X'), verts=list({v for f in lid for v in f.verts}))
+    C.box_uv(bm, 0.5); C.paint(bm, (0.17, 0.24, 0.36), ground_dark=0.3, dark_h=0.1)
+    o = C.new_obj(name + '_shell', bm, ['Plastic'], root)
+    m = o.modifiers.new('bev', 'BEVEL'); m.width = 0.02; m.segments = 2
+    bm = bmesh.new()                                                       # inside lining (darker), handle, latches
+    C.cube(bm, (0, 0, H - 0.005), (W - 0.06, D - 0.06, 0.01))
+    C.cube(bm, (0, -D / 2 - 0.03, H * 0.6), (0.18, 0.03, 0.03))
+    for x in (-0.22, 0.22): C.cube(bm, (x, -D / 2 - 0.012, H * 0.7), (0.05, 0.02, 0.03))
+    C.box_uv(bm, 0.5); C.paint(bm, (0.12, 0.13, 0.15)); C.new_obj(name + '_trim', bm, ['Rubber'], root)
+    bm = bmesh.new()                                                       # clothes: soft lumps in muted colors, one sleeve over the edge
+    for (x, y, sx, sy, c) in ((-0.15, -0.05, 0.32, 0.3, (0.7, 0.64, 0.52)), (0.14, 0.04, 0.3, 0.26, (0.52, 0.28, 0.24)), (0.02, -0.08, 0.22, 0.16, (0.82, 0.8, 0.74)),
+                              (0.38, -0.12, 0.26, 0.12, (0.36, 0.44, 0.5)), (-0.46, -0.3, 0.3, 0.14, (0.7, 0.64, 0.52))):
+        f = C.cube(bm, (x, y, H + 0.03), (sx, sy, 0.06 + rng.uniform(0, 0.03)))
+        C.paint(bm, c, faces=f)
+    o = C.new_obj(name + '_clothes', bm, ['Fabric'], root)
+    m = o.modifiers.new('bev', 'BEVEL'); m.width = 0.025; m.segments = 2
+    return root
+
+def box_cardboard(name, size=(0.5, 0.4, 0.36), seed=1):
+    rng = random.Random(seed)
+    root = _root(name); bm = bmesh.new()
+    sx, sy, sz = size
+    C.cube(bm, (0, 0, sz / 2), size)
+    for s_ in (-1, 1):                                                    # open flaps
+        f = C.cube(bm, (0, s_ * (sy / 2 + 0.09), sz + 0.0), (sx * 0.98, 0.18, 0.006))
+        bmesh.ops.rotate(bm, cent=(0, s_ * sy / 2, sz), matrix=Matrix.Rotation(s_ * math.radians(rng.uniform(25, 60)), 3, 'X'), verts=list({v for fa in f for v in fa.verts}))
+    C.box_uv(bm, 0.5); C.paint(bm, (0.62, 0.47, 0.3), ground_dark=0.3, dark_h=0.15)
+    C.new_obj(name + '_w', bm, ['Paint'], root)
+    return root
+
 # ------------------------------------------------------------------ imported
 def _import_gltf(path):
     before = set(bpy.data.objects)
@@ -250,6 +289,8 @@ def build_all():
     out['dock'] = dock('dock')
     out['bunny'] = bunny('bunny')
     out['branch'] = branch('branch')
+    out['suitcase_open'] = suitcase_open('suitcase_open')
+    out['box_cardboard'] = box_cardboard('box_cardboard')
     out['chair'] = polyhaven('chair', 'plastic_monobloc_chair_01')
     out['trash_can'] = polyhaven('trash_can', 'metal_trash_can', ratio=0.3)
     out['utility_box'] = polyhaven('utility_box', 'utility_box_01')

@@ -31,7 +31,7 @@ def _leaf(canvas, cx, cy, L, W, ang, col, rng, rib=0.75):
     dx, dy = xs - cx, ys - cy
     u = (dx * ca + dy * sa) / L                 # 0 base .. 1 tip
     v = (-dx * sa + dy * ca) / (W * 0.5)        # -1 .. 1 across
-    prof = np.clip(np.sin(np.clip(u, 0, 1) * math.pi) ** 0.7, 0, 1)
+    prof = np.maximum(np.sin(np.clip(u, 0, 1) * math.pi), 0) ** 0.7   # (sin(pi) is slightly negative in float32: clamp before the power, or it is NaN)
     inside = (u > 0) & (u < 1) & (np.abs(v) < prof)
     if not inside.any(): return
     a = inside.astype(np.float32)
@@ -44,11 +44,18 @@ def _leaf(canvas, cx, cy, L, W, ang, col, rng, rib=0.75):
     sub[..., :3] = sub[..., :3] * (1 - a[..., None]) + c * a[..., None]
     sub[..., 3] = np.maximum(sub[..., 3], a)
 
-def leaves_atlas(path, size=1024, ss=2, seed=3):
-    """2x2 atlas of leaf clusters: olive, deep green, sunlit yellow-green, dry olive."""
+AUTUMN = [
+    [(0.46, 0.17, 0.07), (0.55, 0.24, 0.09), (0.40, 0.15, 0.07), (0.60, 0.30, 0.10)],   # rust / copper
+    [(0.58, 0.30, 0.09), (0.66, 0.38, 0.11), (0.52, 0.26, 0.08), (0.70, 0.44, 0.14)],   # copper / orange
+    [(0.66, 0.46, 0.13), (0.72, 0.54, 0.18), (0.60, 0.42, 0.12), (0.76, 0.60, 0.24)],   # ochre / muted gold
+    [(0.50, 0.30, 0.10), (0.36, 0.34, 0.14), (0.62, 0.40, 0.12), (0.30, 0.30, 0.13)],   # turning: copper with olive
+]
+
+def leaves_atlas(path, size=1024, ss=2, seed=3, palettes=None):
+    """2x2 atlas of leaf clusters: olive, deep green, sunlit yellow-green, dry olive (or the given palettes)."""
     rng = random.Random(seed); S = size * ss
     canvas = np.zeros((S, S, 4), np.float32)
-    palettes = [
+    palettes = palettes or [
         [(0.22, 0.30, 0.12), (0.30, 0.38, 0.15), (0.26, 0.34, 0.14), (0.35, 0.40, 0.18)],
         [(0.14, 0.24, 0.10), (0.19, 0.30, 0.12), (0.16, 0.27, 0.12), (0.22, 0.32, 0.14)],
         [(0.34, 0.42, 0.16), (0.42, 0.48, 0.20), (0.38, 0.45, 0.18), (0.30, 0.38, 0.14)],
@@ -123,7 +130,7 @@ def grass_texture(path, w=512, h=256, ss=2, seed=9):
         x = rng.uniform(0.05, 0.95) * w * ss; L = rng.uniform(0.45, 0.95) * h * ss
         ang = -math.pi / 2 + rng.uniform(-0.45, 0.45)
         g = rng.random()
-        col = (0.30 + 0.16 * g, 0.36 + 0.10 * g, 0.15 + 0.06 * g) if rng.random() < 0.75 else (0.52, 0.47, 0.30)
+        col = (0.34 + 0.14 * g, 0.40 + 0.10 * g, 0.18 + 0.07 * g) if rng.random() < 0.7 else ((0.60, 0.52, 0.32) if rng.random() < 0.6 else (0.46, 0.44, 0.26))
         _leaf(canvas, x, h * ss * 0.99, L, w * ss * 0.012, ang, col, rng, rib=0)
     out = _down(canvas, ss); out[..., :3] = np.where(out[..., 3:4] > 0, out[..., :3] / np.maximum(out[..., 3:4], 1e-4), 0)
     _bleed(out); _save_png(out, path)
@@ -140,12 +147,64 @@ def _bleed(img, it=6):
         rgb[new] = acc[new] / cnt[new][:, None]; filled |= new
     img[..., :3] = rgb
 
+def broad_texture(path, w=512, h=512, ss=2, seed=11):
+    """Two big tropical leaves side by side (philodendron / banana-like): olive (left), sage (right). Base at the bottom."""
+    rng = random.Random(seed)
+    canvas = np.zeros((h * ss, w * ss, 4), np.float32)
+    for k, col in enumerate([(0.26, 0.34, 0.14), (0.36, 0.42, 0.24)]):
+        cx = (k + 0.5) * w * ss / 2
+        _leaf(canvas, cx, h * ss * 0.985, h * ss * 0.95, w * ss * 0.42, -math.pi / 2, col, rng, rib=1.0)
+        for i in range(3):   # a few torn bites along the edge
+            y = h * ss * rng.uniform(0.3, 0.8); x = cx + rng.choice((-1, 1)) * w * ss * rng.uniform(0.15, 0.2)
+            yy, xx = np.ogrid[:h * ss, :w * ss]
+            m = (yy - y) ** 2 + (xx - x) ** 2 < (w * ss * 0.025) ** 2
+            canvas[m, 3] = 0
+    out = _down(canvas, ss); out[..., :3] = np.where(out[..., 3:4] > 0, out[..., :3] / np.maximum(out[..., 3:4], 1e-4), 0)
+    _bleed(out); _save_png(out, path)
+
+def _star_leaf(canvas, cx, cy, R, ang, col, rng):
+    """A fallen maple/sweetgum-like leaf: five pointed lobes from a center, flat on the ground."""
+    for i in range(5):
+        a = ang + i * 2 * math.pi / 5 + rng.uniform(-0.12, 0.12)
+        L = R * (1.0 if i in (0, 1, 4) else 0.8) * rng.uniform(0.9, 1.05)
+        _leaf(canvas, cx, cy, L, L * 0.55, a, col, rng, rib=0.5)
+
+def litter_texture(path, size=1024, seed=17):
+    """2x2 atlas of fallen-leaf scatters for ground decals: dense drifts (q0, q1), sparse scatters (q2, q3).
+    Rust, copper, ochre, muted gold and brown; transparent between leaves; clear margins so tiles never show edges."""
+    rng = random.Random(seed); S = size
+    canvas = np.zeros((S, S, 4), np.float32)
+    cols = [(0.55, 0.22, 0.08), (0.66, 0.34, 0.10), (0.72, 0.50, 0.16), (0.42, 0.26, 0.12), (0.60, 0.40, 0.14), (0.35, 0.22, 0.12)]
+    half = S // 2
+    for q, n in enumerate((240, 200, 60, 40)):
+        ox, oy = (q % 2) * half, (q // 2) * half
+        for i in range(n):
+            r = half * 0.42 * math.sqrt(rng.random()) ** (1.3 if q < 2 else 0.8)
+            t = rng.random() * 2 * math.pi
+            x, y = ox + half / 2 + r * math.cos(t), oy + half / 2 + r * math.sin(t) * 0.9
+            R = half * rng.uniform(0.022, 0.04) * (1.4 if rng.random() < 0.08 else 1)
+            c = cols[rng.randrange(len(cols))]; k = rng.uniform(0.75, 1.1)
+            cc = tuple(min(1, v * k) for v in c)
+            if rng.random() < 0.7: _star_leaf(canvas, x, y, R, rng.uniform(0, 6.28), cc, rng)
+            else: _leaf(canvas, x - R, y, R * 2.1, R * 0.8, rng.uniform(0, 6.28), cc, rng)
+    out = canvas
+    out[..., :3] = np.where(out[..., 3:4] > 0, out[..., :3] / np.maximum(out[..., 3:4], 1e-4), 0)
+    _bleed(out); _save_png(out, path)
+
 def textures():
     os.makedirs(FOL, exist_ok=True)
     leaves_atlas(os.path.join(FOL, 'leaves.png'))
     frond_atlas(os.path.join(FOL, 'frond.png'))
     fan_texture(os.path.join(FOL, 'fan.png'))
     grass_texture(os.path.join(FOL, 'grass.png'))
+    autumn_textures()
+
+def autumn_textures():
+    os.makedirs(FOL, exist_ok=True)
+    leaves_atlas(os.path.join(FOL, 'leaves_autumn.png'), seed=31, palettes=AUTUMN)
+    broad_texture(os.path.join(FOL, 'broad.png'))
+    litter_texture(os.path.join(FOL, 'litter.png'))
+    grass_texture(os.path.join(FOL, 'grass.png'), seed=9)
 
 # ------------------------------------------------------------------ geometry helpers
 def _tube(bm, pts, radii, segs, uvl, col, v_scale=1.0, circ_scale=1.0):
@@ -227,7 +286,7 @@ def _finish(name, bm_wood, wood_mat, bm_leaf, leaf_mat, centers, up_bias=0.45):
     return root
 
 # ------------------------------------------------------------------ assets
-def oak(name, seed, H=8.0, spread=3.6, lean=(0.0, 0.0)):
+def oak(name, seed, H=8.0, spread=3.6, lean=(0.0, 0.0), leaf_mat='Leaves', quads=(0, 0, 1, 2, 3)):
     """A broad live-oak-like shade tree: thick trunk, a few heavy limbs, clumped canopy."""
     rng = random.Random(seed)
     bw = bmesh.new(); uvw = bw.loops.layers.uv.new('UVMap')
@@ -250,8 +309,8 @@ def oak(name, seed, H=8.0, spread=3.6, lean=(0.0, 0.0)):
         _tube(bw, lp, [0.2, 0.13, 0.06], 7, uvw, (0.95, 0.95, 0.95), v_scale=0.6, circ_scale=0.6)
         clumps.append((end + Vector((0, 0, 0.3)), spread * rng.uniform(0.36, 0.48)))
     bl = bmesh.new(); uvl = bl.loops.layers.uv.new('UVMap'); colL = C.ensure_col(bl); centers = []
-    _canopy(bl, uvl, colL, centers, clumps, rng, quads=[0, 0, 1, 2, 3], card=(1.5, 2.3), density=40)
-    return _finish(name, bw, 'Bark', bl, 'Leaves', centers)
+    _canopy(bl, uvl, colL, centers, clumps, rng, quads=list(quads), card=(1.5, 2.3), density=40)
+    return _finish(name, bw, 'Bark', bl, leaf_mat, centers)
 
 def palm(name, seed, H=7.5, curve=1.2, fronds=18, dead=5):
     """A cabbage/sabal-style palm: slim ringed trunk with a curve, arching fronds, a few dead hanging ones."""
@@ -298,7 +357,7 @@ def palm(name, seed, H=7.5, curve=1.2, fronds=18, dead=5):
         frond(az, rng.uniform(-1.35, -1.0), rng.uniform(1.6, 2.2), True)
     return _finish(name, bw, 'PalmBark', bl, 'PalmFrond', centers, up_bias=0.9)
 
-def shrub(name, seed, R=1.0, quads=(1, 0, 3)):
+def shrub(name, seed, R=1.0, quads=(1, 0, 3), leaf_mat='Leaves'):
     rng = random.Random(seed)
     bl = bmesh.new(); uvl = bl.loops.layers.uv.new('UVMap'); colL = C.ensure_col(bl); centers = []
     clumps = [(Vector((0, 0, R * 0.55)), R)]
@@ -306,7 +365,7 @@ def shrub(name, seed, R=1.0, quads=(1, 0, 3)):
         a = rng.uniform(0, 6.28)
         clumps.append((Vector((math.cos(a) * R * 0.6, math.sin(a) * R * 0.6, R * 0.45)), R * rng.uniform(0.6, 0.8)))
     _canopy(bl, uvl, colL, centers, clumps, rng, quads=list(quads), card=(0.9, 1.3), density=46, dark=0.45)
-    return _finish(name, None, None, bl, 'Leaves', centers, up_bias=0.5)
+    return _finish(name, None, None, bl, leaf_mat, centers, up_bias=0.5)
 
 def palmetto(name, seed, n=16, R=0.9):
     rng = random.Random(seed)
@@ -339,6 +398,64 @@ def grass_tuft(name, seed):
         centers.append(Vector((0, 0, -0.5)))
     return _finish(name, None, None, bl, 'Grass', centers, up_bias=2.0)
 
+def broadleaf(name, seed, n=9, H=1.1):
+    """A big-leaf tropical plant: n broad leaves on short stems arching out from the base (few, large, readable shapes)."""
+    rng = random.Random(seed)
+    bl = bmesh.new(); uvl = bl.loops.layers.uv.new('UVMap'); colL = C.ensure_col(bl); centers = []
+    for i in range(n):
+        a = 2 * math.pi * i / n + rng.uniform(-0.3, 0.3)
+        tilt = rng.uniform(0.35, 1.05)                     # 0 upright .. 1.1 arching out
+        L = H * rng.uniform(0.7, 1.05); W = L * 0.42
+        d = Vector((math.cos(a) * math.sin(tilt), math.sin(a) * math.sin(tilt), math.cos(tilt)))
+        side = Vector((-math.sin(a), math.cos(a), 0))
+        base = d * 0.12
+        segs = 4; prev = None; half = rng.randrange(2)
+        for k in range(segs + 1):
+            t = k / segs
+            droop = Vector((0, 0, -0.35 * L * t * t * math.sin(tilt)))
+            p = base + d * L * t + droop
+            cup = Vector((0, 0, 0.06 * L))
+            row = [bl.verts.new(p - side * W / 2 + cup), bl.verts.new(p + side * W / 2 + cup)]
+            if prev:
+                f = bl.faces.new((prev[1], prev[0], row[0], row[1]))   # wound so the upper surface is the front (seen from above)
+                for l, (u, v) in zip(f.loops, ((1, (k - 1) / segs), (0, (k - 1) / segs), (0, t), (1, t))):
+                    l[uvl].uv = (half * 0.5 + u * 0.5, v)
+                    sh = 0.8 + 0.2 * v                     # (vertex colors are sRGB: 0.8 arrives as about 0.6 linear)
+                    l[colL] = (sh, sh, sh * 0.95, 1)
+                centers.append(Vector((0, 0, -0.2)))
+            prev = row
+    return _finish(name, None, None, bl, 'BroadLeaf', centers, up_bias=1.2)
+
+def tuft(name, seed, n=5, h=(0.32, 0.55), w=0.55, dry=0.0):
+    """A raised grass clump: n crossing blade cards, taller in the middle, darker at the base."""
+    rng = random.Random(seed)
+    bl = bmesh.new(); uvl = bl.loops.layers.uv.new('UVMap'); colL = C.ensure_col(bl); centers = []
+    for i in range(n):
+        a = i * math.pi / n + rng.uniform(-0.25, 0.25)
+        hh = rng.uniform(*h); ww = w * rng.uniform(0.75, 1.1)
+        ox, oy = rng.uniform(-0.08, 0.08), rng.uniform(-0.08, 0.08)
+        dx, dy = math.cos(a) * ww / 2, math.sin(a) * ww / 2
+        lx, ly = rng.uniform(-0.1, 0.1), rng.uniform(-0.1, 0.1)
+        vs = [bl.verts.new(c) for c in ((ox - dx, oy - dy, 0), (ox + dx, oy + dy, 0), (ox + dx * 1.25 + lx, oy + dy * 1.25 + ly, hh), (ox - dx * 1.25 + lx, oy - dy * 1.25 + ly, hh))]
+        f = bl.faces.new(vs)
+        u0 = rng.choice((0.0, 0.5)); warm = dry * rng.random()
+        for l, uv, k in zip(f.loops, ((u0, 0), (u0 + 0.5, 0), (u0 + 0.5, 1), (u0, 1)), (0.72, 0.72, 1.0, 1.0)):   # (sRGB: the base arrives about half as bright)
+            l[uvl].uv = uv; l[colL] = (k * (1 + 0.25 * warm), k * (1 + 0.1 * warm), k * (1 - 0.15 * warm), 1)
+        centers.append(Vector((0, 0, -0.6)))
+    return _finish(name, None, None, bl, 'Grass', centers, up_bias=2.0)
+
+def build_autumn():
+    out = {}
+    out['oak_autumn_a'] = oak('oak_autumn_a', 41, H=7.4, spread=3.6, leaf_mat='LeavesAutumn', quads=(0, 1, 1, 2, 3))
+    out['oak_autumn_b'] = oak('oak_autumn_b', 53, H=6.0, spread=2.9, lean=(0.3, -0.2), leaf_mat='LeavesAutumn', quads=(1, 2, 2, 3))
+    out['shrub_rust'] = shrub('shrub_rust', 19, R=0.75, quads=(0, 0, 3), leaf_mat='LeavesAutumn')
+    out['broadleaf_a'] = broadleaf('broadleaf_a', 3, n=9, H=1.0)
+    out['broadleaf_b'] = broadleaf('broadleaf_b', 7, n=12, H=1.35)
+    out['tuft_a'] = tuft('tuft_a', 1, n=5, h=(0.28, 0.45), w=0.5)
+    out['tuft_b'] = tuft('tuft_b', 2, n=7, h=(0.4, 0.7), w=0.7, dry=0.6)
+    out['tuft_c'] = tuft('tuft_c', 3, n=4, h=(0.18, 0.3), w=0.4, dry=1.0)
+    return out
+
 def build_all():
     out = {}
     out['oak_a'] = oak('oak_a', 11, H=8.5, spread=3.8)
@@ -353,4 +470,5 @@ def build_all():
     out['palmetto_a'] = palmetto('palmetto_a', 3)
     out['palmetto_b'] = palmetto('palmetto_b', 6, n=22, R=1.1)
     out['grass_a'] = grass_tuft('grass_a', 1)
+    out.update(build_autumn())
     return out

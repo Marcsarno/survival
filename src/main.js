@@ -3,7 +3,7 @@ import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { Assets } from './core/assets.js';
 import { Input } from './core/input.js';
 import { Collision } from './core/collision.js';
-import { buildLevel, KIT, clampToRoute, groundKind, zoneAt, progressAt, seaDist, SPAWN, GATE, PLAY, BUNNY, LEVEL_TEST, ROUTE_LENGTH, nearest } from './world/level.js';
+import { buildLevel, KIT, clampToRoute, groundKind, zoneAt, progressAt, SPAWN, GATE, MUD_PATCHES, LEVEL_TEST, ROUTE_LENGTH, nearest } from './world/level.js';
 import { shared, setAnisotropy } from './world/materials.js';
 import { Footprints } from './systems/footprints.js';
 import { FollowCamera } from './systems/camera.js';
@@ -16,16 +16,17 @@ import { Ambience } from './systems/ambience.js';
 import { makeSeeThrough, updateSeeThrough } from './core/seethrough.js';
 import { lerp, smoothstep } from './core/util.js';
 
-// The opening, pass 2: Marc (the Tripo model) walks a Florida canal neighborhood at golden hour, from
-// the seawall through the park to a locked gate and the house. Assets: the Blender kit and Poly Haven
-// textures (see docs/DESIGN.md → Opening, pass 2). The sequence lives in systems/story.js.
+// The opening, neighborhood pass: Marc (the Tripo model) searches an abandoned South Florida
+// neighborhood at golden hour, from the street through a side passage, a backyard and its locked gate, a
+// small park, then (after her call, running) mud or firm ground to the house. Assets: the Blender kit and
+// Poly Haven textures (see docs/DESIGN.md → Opening, neighborhood pass). The sequence: systems/story.js.
 const params = new URLSearchParams(location.search);
 
 // light by progress (0 → 1): low golden sun at the seawall, sinking to a red-orange sunset at the house
 const LIGHT = [
   { p: 0, sun: '#ffd3a0', sunI: 4.4, elev: 0.5, sky: '#e6d2b0', gnd: '#6b5640', hemiI: 0.8, fog: '#d9bf98', env: 0.55, exp: 1.06 },
   { p: 0.55, sun: '#ffc286', sunI: 4.0, elev: 0.4, sky: '#dcc2a0', gnd: '#5f4b3a', hemiI: 0.72, fog: '#cfae8a', env: 0.5, exp: 1.06 },
-  { p: 1, sun: '#ff9e60', sunI: 3.2, elev: 0.27, sky: '#bfa29c', gnd: '#4e3e34', hemiI: 0.62, fog: '#b08c7c', env: 0.42, exp: 1.08 },
+  { p: 1, sun: '#ffad74', sunI: 3.2, elev: 0.28, sky: '#c4aaa0', gnd: '#4e3e34', hemiI: 0.64, fog: '#b39280', env: 0.44, exp: 1.08 },
 ];
 
 class Game {
@@ -69,12 +70,14 @@ class Game {
       const pl = new THREE.PointLight(l.color, l.intensity, l.distance, 1.6); pl.position.set(l.x, l.y, l.z); this.scene.add(pl);
       this.lights[l.kind] = { light: pl, base: l.intensity };
     }
-    this.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && !o.userData.noSeeThrough && o.material?.isMeshStandardMaterial) makeSeeThrough(o.material, { nearFade: !!o.material.alphaTest }); });
+    this.scene.traverse((o) => { if (o.isMesh && !o.isSkinnedMesh && !o.userData.noSeeThrough && o.material?.isMeshStandardMaterial) makeSeeThrough(o.material, { nearFade: !!o.material.alphaTest }); });   // foliage right under the camera thins out
     this.footprints = new Footprints(this.scene, 220, false, 300, { tint: '#3b2c1e', night: '#2a1f15' });
     this.childPrints = new Footprints(this.scene, 64, false, Infinity, { tint: '#2e2216', night: '#21180f' });
-    const trail = (x0, z0, x1, z1, n) => { const yaw = Math.atan2(x1 - x0, z1 - z0); for (let i = 0; i < n; i++) { const t = i / (n - 1), s = i % 2 ? 1 : -1; this.childPrints.add(x0 + (x1 - x0) * t + Math.cos(yaw) * 0.06 * s, 0.01, z0 + (z1 - z0) * t - Math.sin(yaw) * 0.06 * s, yaw + (Math.random() - 0.5) * 0.2, 1.3, s, 0.62); } };
-    trail(PLAY.x - 0.5, PLAY.z + 3.0, PLAY.x - 5.4, PLAY.z - 1.4, 14);   // from under the swing toward the path
-    trail(19.4, -57.6, 21.2, -61.0, 8); trail(21.0, -62.6, 22.9, -68.6, 11);  // up the lane, past the bunny, to the gate
+    // her small prints: only where the ground is soft enough to hold them (the little mud patches), each a
+    // few steps along the way she went; nothing drawn across the dry ground in between
+    const trail = (x0, z0, x1, z1, n) => { const yaw = Math.atan2(x1 - x0, z1 - z0); for (let i = 0; i < n; i++) { const t = i / Math.max(1, n - 1), s = i % 2 ? 1 : -1; this.childPrints.add(x0 + (x1 - x0) * t + Math.cos(yaw) * 0.06 * s, 0.01, z0 + (z1 - z0) * t - Math.sin(yaw) * 0.06 * s, yaw + (Math.random() - 0.5) * 0.2, 1.3, s, 0.62); } };
+    const dirs = [[0.0, -1], [-0.05, -1], [0.1, -1], [0.0, -1], [-0.2, -1]];
+    MUD_PATCHES.forEach(([cx, cz, rx, rz], i) => { const [dx, dz] = dirs[i] || [0, -1], L = Math.hypot(dx, dz), h = rz * 0.8; trail(cx - dx / L * h, cz - dz / L * h, cx + dx / L * h, cz + dz / L * h, 4); });
     this.childPrints.update(1, false);
     this.player = new Player(this);
     this.ambience = new Ambience(this.scene);
@@ -105,7 +108,7 @@ class Game {
     s.castShadow = true;
     const size = this.quality.low ? 1024 : 2048;
     s.shadow.mapSize.set(size, size);
-    const c = s.shadow.camera; c.left = -24; c.right = 24; c.top = 24; c.bottom = -24; c.near = 1; c.far = 140;
+    const c = s.shadow.camera; c.left = -18; c.right = 18; c.top = 18; c.bottom = -18; c.near = 1; c.far = 140;
     s.shadow.bias = -0.0004; s.shadow.normalBias = 0.03;
     this.scene.add(s, s.target);
     this.hemi = new THREE.HemisphereLight('#d2c3a6', '#5a4a3a', 0.55); this.scene.add(this.hemi);
@@ -136,7 +139,7 @@ class Game {
   resetRoute(fade) {
     const go = () => {
       this.ui.hideEnd();
-      this.player.frozen = false; this.player.carrying = null; this.player.lookAt(null);
+      this.player.frozen = false; this.player.running = false; this.player.carrying = null; this.player.lookAt(null);
       this.player.setPosition(SPAWN.x, SPAWN.z, SPAWN.yaw);
       this.level.reset(); this.footprints.reset(); this.interact.reset(); this.story.reset();
       this.snapCamera();
@@ -193,7 +196,7 @@ class Game {
     this.applyAtmosphere(dt);
     this.footprints.update(dt, false);
     const p = this.player.pos, sw = this.level.dynamic.swings[0];
-    this.audio.update(dt, { seaDist: seaDist(p.x, p.z), swingDist: Math.hypot(p.x - sw.position.x, p.z - sw.position.z), swingPhase: this._swingPhase || 0, night: smoothstep(0.5, 1, progressAt(p.x, p.z)) });
+    this.audio.update(dt, { swingDist: Math.hypot(p.x - sw.position.x, p.z - sw.position.z), swingPhase: this._swingPhase || 0, night: smoothstep(0.5, 1, progressAt(p.x, p.z)) });
   }
 
   /** The world moves on its own: a swing still swaying, the boat on the water, the gate, candlelight. */
@@ -228,7 +231,7 @@ class Game {
     const zone = zoneAt(p.z); this.section = zone.id;
     const zk = snap ? 1 : 1 - Math.exp(-dt * 0.7);
     this._fogFar = this._fogFar == null || snap ? zone.fog : this._fogFar + (zone.fog - this._fogFar) * zk;
-    this.scene.fog.near = this.camera.dist + 26; this.scene.fog.far = this.scene.fog.near + this._fogFar * 1.6;   // a light haze far up the frame only
+    this.scene.fog.near = this.camera.dist + 16; this.scene.fog.far = this.scene.fog.near + this._fogFar * 1.4;   // a haze far up the frame only (the lower camera sees further)
     this.camera.zoomTarget = zone.zoom; this.camera.biasTarget = zone.bias || null;
     if (snap) { this.camera.zoom = zone.zoom; if (zone.bias) Object.assign(this.camera.bias, zone.bias); else this.camera.bias.w = 0; }
   }
@@ -244,7 +247,7 @@ class Game {
     const p = this.player.pos, n = nearest(p.x, p.z);
     return {
       pos: [+p.x.toFixed(2), +p.z.toFixed(2)], y: +p.y.toFixed(3), lat: +n.d.toFixed(2), w: +n.w.toFixed(2), routeLength: +ROUTE_LENGTH.toFixed(1), section: this.section, ground: this.groundAt(p.x, p.z),
-      speed: +(this.player.speed || 0).toFixed(2), walkSpeed: +this.player.walkSpeed.toFixed(2), yaw: +this.player.yaw.toFixed(2), frozen: this.player.frozen, seq: this.player.seq?.kind ?? null, carrying: !!this.player.carrying,
+      speed: +(this.player.speed || 0).toFixed(2), walkSpeed: +this.player.walkSpeed.toFixed(2), runSpeed: +this.player.runSpeed.toFixed(2), running: this.player.running, yaw: +this.player.yaw.toFixed(2), frozen: this.player.frozen, seq: this.player.seq?.kind ?? null, carrying: !!this.player.carrying,
       story: this.story.state(), prints: this.footprints.count, footfalls: this.player.footfalls,
       prompt: this.ui._prompt, subtitle: this.ui._sub, hint: this.ui._hint, modal: this.ui.modal, paused: this.paused,
       audio: { state: this.audio.state, muted: this.audio.muted, tension: +this.audio.tension.toFixed(2) },

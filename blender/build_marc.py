@@ -1,8 +1,8 @@
 # Builds public/assets/models/marc.glb from Marc's Tripo FBX (assets/source/marc/).
 #
 #   - keeps the Mixamo-style rig and the clips the opening uses, renamed:
-#       walk -> Walk, climb -> Climb, frustrated_01 -> Frustrated (its first frame is the idle pose)
-#   - drops the others (box, chop, kick, run: no sprint in this opening)
+#       walk -> Walk, run -> Run (after Arianna's call), climb -> Climb, frustrated_01 -> Frustrated (its first frame is the idle pose)
+#   - drops the others (box, chop, kick)
 #   - resizes the 4K texture to 2048 for phones
 #   - the rig is 1 unit tall; the game scales it to 1.8 m. Root motion stays in the clips; the game
 #     strips the forward part of the Hips track and moves Marc itself.
@@ -18,7 +18,7 @@ arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
 mesh = next(o for o in bpy.data.objects if o.type == 'MESH')
 arm.name = 'Marc'; mesh.name = 'MarcBody'
 
-KEEP = {'walk': 'Walk', 'climb': 'Climb', 'frustrated_01': 'Frustrated'}
+KEEP = {'walk': 'Walk', 'run': 'Run', 'climb': 'Climb', 'frustrated_01': 'Frustrated'}
 for act in list(bpy.data.actions):
     key = act.name.split('|')[-1].split('.')[0]
     if key in KEEP:

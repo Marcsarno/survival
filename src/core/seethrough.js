@@ -21,19 +21,26 @@ export function makeSeeThrough(mat, { nearFade = false } = {}) {
     s.uniforms.uPlayerDepth = seeThrough.uPlayerDepth;
     s.uniforms.uRadius = seeThrough.uRadius;
     s.fragmentShader = s.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec2 uPlayerPx; uniform float uPlayerDepth; uniform float uRadius;')
+      .replace('#include <common>', `#include <common>
+        uniform vec2 uPlayerPx; uniform float uPlayerDepth; uniform float uRadius;
+        // 4x4 ordered (Bayer) dither: an even, fine screen with no stripes. (The earlier patterns,
+        // mod(x + 2y, 4) and mod(3x + 2y, 5), are diagonal lines: they drew stripes across near canopies.)
+        float bayer4(vec2 p) {
+          vec2 q = mod(floor(p), 4.0);
+          vec4 r = q.y < 1.0 ? vec4(0.0, 8.0, 2.0, 10.0) : q.y < 2.0 ? vec4(12.0, 4.0, 14.0, 6.0) : q.y < 3.0 ? vec4(3.0, 11.0, 1.0, 9.0) : vec4(15.0, 7.0, 13.0, 5.0);
+          float v = q.x < 1.0 ? r.x : q.x < 2.0 ? r.y : q.x < 3.0 ? r.z : r.w;
+          return (v + 0.5) / 16.0;
+        }`)
       .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
         {
           float dpx = distance(gl_FragCoord.xy, uPlayerPx);
           if (vViewPosition.z < uPlayerDepth - 1.2 && dpx < uRadius) {
             float edge = smoothstep(uRadius * 0.55, uRadius, dpx);        // 0 in the middle -> 1 at the rim
-            float bayer = mod(floor(gl_FragCoord.x) + floor(gl_FragCoord.y) * 2.0, 4.0) / 4.0;
-            if (bayer + 0.12 > edge) discard;
+            if (bayer4(gl_FragCoord.xy) + 0.06 > edge) discard;
           }
-          ${nearFade ? `if (vViewPosition.z < uPlayerDepth - 3.0) {
-            float k = clamp((uPlayerDepth - 3.0 - vViewPosition.z) / 6.0, 0.0, 1.0) * 0.75;
-            float b2 = mod(floor(gl_FragCoord.x) * 3.0 + floor(gl_FragCoord.y) * 2.0, 5.0) / 5.0;
-            if (b2 < k) discard;
+          ${nearFade ? `if (vViewPosition.z < uPlayerDepth - 5.0) {   // only canopies right under the camera (the framing trees further off stay solid)
+            float k = clamp((uPlayerDepth - 5.0 - vViewPosition.z) / 3.0, 0.0, 1.0) * 0.9;
+            if (bayer4(gl_FragCoord.xy + vec2(1.0, 2.0)) < k) discard;
           }` : ''}
         }`);
   };

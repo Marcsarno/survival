@@ -4,9 +4,20 @@ import * as THREE from 'three';
 // so up-screen is always north, the direction of travel. The framing puts the player below the
 // middle of the screen and leads toward north and toward where the player is moving, so there is
 // room to see what lies ahead. Portrait and landscape use different distances and FOVs.
-// Portrait frames Marc at about 8% of the screen height with room to see the scene around him (pass 2).
-const PORTRAIT = { fov: 46, dist: 17.5, pitch: 0.87, lead: 1.3 };   // pitch: radians above the horizon (about 50°)
-const LANDSCAPE = { fov: 34, dist: 24, pitch: 0.87, lead: 1.2 };
+// Neighborhood pass: closer and a little lower than pass 2, so doors, windows, posture and the depth
+// between houses read. Two candidates were captured on the same views (hub, Opening redesign):
+//   pass2  fov 46, dist 17.5, pitch 0.87 (50°)  Marc about 8% of the screen height
+//   A      fov 42, dist 14.0, pitch 0.75 (43°)  Marc about 12%
+//   B      fov 40, dist 12.0, pitch 0.64 (37°)  Marc about 16%
+// ?camset=pass2|a|b picks one; ?cam=fov,dist,pitch,lead overrides the numbers.
+const CAMSETS = {
+  pass2: { portrait: { fov: 46, dist: 17.5, pitch: 0.87, lead: 1.3 }, landscape: { fov: 34, dist: 24, pitch: 0.87, lead: 1.2 } },
+  a: { portrait: { fov: 42, dist: 14.0, pitch: 0.75, lead: 0.45 }, landscape: { fov: 34, dist: 19, pitch: 0.75, lead: 1.5 } },
+  b: { portrait: { fov: 40, dist: 12.0, pitch: 0.64, lead: 0.6 }, landscape: { fov: 32, dist: 17, pitch: 0.66, lead: 1.8 } },
+};
+export const CAMSET = new URLSearchParams(location.search).get('camset') || 'a';
+const PORTRAIT = { ...(CAMSETS[CAMSET] || CAMSETS.a).portrait };    // pitch: radians above the horizon
+const LANDSCAPE = { ...(CAMSETS[CAMSET] || CAMSETS.a).landscape };
 // tuning aid: ?cam=fov,dist,pitch,lead overrides the portrait (or landscape) values
 const q = new URLSearchParams(location.search).get('cam');
 if (q) { const [fov, dist, pitch, lead] = q.split(',').map(Number); for (const c of [PORTRAIT, LANDSCAPE]) Object.assign(c, { fov: fov || c.fov, dist: dist || c.dist, pitch: pitch || c.pitch, lead: lead ?? c.lead }); }

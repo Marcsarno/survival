@@ -198,7 +198,7 @@ def house(name, w, d, h=3.0, roof='hip', wall='Stucco', tint=(1, 1, 1), rise=2.0
     C.new_obj(name + '_spout', bm, ['Trim'], root)
     return root
 
-def stucco_wall(name, L=3.0, h=1.0, tint=(0.92, 0.88, 0.8), pillar=True):
+def stucco_wall(name, L=3.0, h=1.0, tint=(0.92, 0.88, 0.8), pillar=True, wall='Stucco'):
     root = bpy.data.objects.new(name, None); bpy.context.scene.collection.objects.link(root)
     bm = bmesh.new(); C.cube(bm, (0, 0, h / 2), (L, 0.24, h)); _split_h(bm, [0.3])
     if pillar: C.cube(bm, (L / 2, 0, (h + 0.3) / 2), (0.42, 0.42, h + 0.3))
@@ -207,7 +207,7 @@ def stucco_wall(name, L=3.0, h=1.0, tint=(0.92, 0.88, 0.8), pillar=True):
     for f in bm.faces:
         for l in f.loops:
             k = 0.65 + 0.35 * min(1, l.vert.co.z / 0.7); l[col] = (tint[0] * k, tint[1] * k, tint[2] * k, 1)
-    C.new_obj(name + '_w', bm, ['Stucco'], root)
+    C.new_obj(name + '_w', bm, [wall], root)
     bm = bmesh.new(); C.cube(bm, (0, 0, h + 0.04), (L + 0.02, 0.32, 0.08))
     if pillar: C.cube(bm, (L / 2, 0, h + 0.36), (0.52, 0.52, 0.1))
     C.box_uv(bm, 1.0); C.paint(bm, (0.8, 0.78, 0.74)); C.new_obj(name + '_cap', bm, ['ConcreteWorn'], root)
@@ -277,6 +277,25 @@ def pumphouse(name):
     return house(name, 3.4, 2.8, h=2.7, roof='flat', wall='StuccoWhite', tint=(0.9, 0.87, 0.8),
                  windows=[('left', 0, 0.6, 0.4, 1.8, 'glass')], door=(0.4, 0.95, (0.42, 0.44, 0.42)), ac=False, seed=4)
 
+def build_neighborhood():
+    """The neighborhood pass (2026-10-01): distinguishable houses in faded cream, sand and pale teal; garden walls."""
+    out = {}
+    out['house_boarded'] = house('house_boarded', 10, 8, rise=1.9, wall='StuccoWhite', tint=(0.94, 0.88, 0.75), seed=31,
+        windows=[('front', -2.9, 1.3, 1.2, 0.9, 'boarded'), ('front', 2.7, 1.5, 1.2, 0.9, 'boarded'), ('left', 0.5, 1.2, 1.0, 1.0, 'boarded'),
+                 ('right', -1.0, 1.2, 1.0, 1.0, 'boarded'), ('right', 2.2, 0.8, 0.8, 1.3, 'glass'), ('back', -2, 1.2, 1.1, 1.0, 'glass'), ('back', 2.2, 1.2, 1.1, 1.0, 'boarded')],
+        door=(0.2, 0.95, (0.36, 0.28, 0.22)), portico=True)
+    out['house_teal'] = house('house_teal', 11, 8, rise=1.8, wall='StuccoWhite', tint=(0.64, 0.79, 0.77), seed=37,
+        windows=[('front', -3.4, 1.4, 1.2, 0.9, 'glass'), ('front', 3.2, 1.3, 1.2, 0.9, 'boarded'), ('left', -1, 1.2, 1.0, 1.0, 'glass'),
+                 ('left', 2.2, 1.2, 1.0, 1.0, 'boarded'), ('right', 0, 1.2, 1.0, 1.0, 'glass'), ('back', -2.5, 1.2, 1.1, 1.0, 'glass'), ('back', 2.5, 1.2, 1.1, 1.0, 'glass')],
+        door=(-0.4, 0.95, (0.85, 0.82, 0.74)), portico=True, carport=(1, 6))
+    out['house_sand'] = house('house_sand', 10, 8, h=3.0, roof='flat', wall='StuccoWhite', tint=(0.9, 0.79, 0.62), seed=43,
+        windows=[('front', -2.6, 1.3, 1.2, 0.9, 'glass'), ('front', 2.6, 1.3, 1.2, 0.9, 'boarded'), ('left', 0, 1.2, 1.0, 1.0, 'boarded'),
+                 ('right', -1.2, 1.2, 1.0, 1.0, 'glass'), ('right', 1.8, 1.2, 1.0, 1.0, 'glass'), ('back', 0, 1.4, 1.1, 1.0, 'glass')],
+        door=(0.3, 0.95, (0.5, 0.36, 0.24)))
+    out['garden_wall'] = stucco_wall('garden_wall', L=3.0, h=1.65, tint=(0.93, 0.88, 0.78), wall='StuccoWhite')
+    out['garden_wall_low'] = stucco_wall('garden_wall_low', L=3.0, h=0.95, tint=(0.9, 0.84, 0.72), wall='StuccoWhite')
+    return out
+
 def build_all():
     out = {}
     out['house_hostage'] = house('house_hostage', 12, 9, rise=2.1, wall='StuccoWhite', tint=(0.96, 0.9, 0.78), seed=21,
@@ -294,6 +313,7 @@ def build_all():
                  ('left', 0, 1.2, 1.0, 1.0, 'glass'), ('right', 1.5, 1.2, 1.0, 1.0, 'glass'), ('back', -3, 1.6, 1.2, 0.9, 'glass'), ('back', 3, 1.2, 1.1, 1.0, 'boarded')],
         door=(-1.8, 0.95, (0.32, 0.36, 0.33)), carport=(-1, 6))
     out['pumphouse'] = pumphouse('pumphouse')
+    out.update(build_neighborhood())
     out['stucco_wall'] = stucco_wall('stucco_wall')
     out['fence_privacy'] = privacy_fence('fence_privacy', seed=2)
     out['fence_privacy_broken'] = privacy_fence('fence_privacy_broken', broken=True, seed=7)

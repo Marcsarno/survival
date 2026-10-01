@@ -4,8 +4,9 @@ import { Assets } from '../core/assets.js';
 
 // Marc: the Tripo model with its Mixamo-style rig (public/assets/models/marc.glb, blender/build_marc.py).
 //
-// - One pace: a methodical walk at the walk clip's own speed (about 1.25 m/s), a little slower on
-//   sand. No run. Slow to start, slow to turn: he is searching, and it should feel heavy.
+// - A methodical walk at the walk clip's own speed (about 1.25 m/s) while he searches; slow to start,
+//   slow to turn. After Arianna's call (story sets running) the same stick runs (the Run clip, about
+//   3 m/s). Mud drags at him either way (a wading walk).
 // - The clips carry root motion. At load the Hips position track is made in-place (the forward part
 //   is removed; the bob and sway stay), and the game moves Marc itself.
 // - Idle is the first frame of the Frustrated clip (a neutral stand) plus breathing and a head that
@@ -15,8 +16,9 @@ import { Assets } from '../core/assets.js';
 //   drops down the far side.
 // - Step sounds come from foot contacts measured in the walk clip. Prints: distance-based, on sand
 //   and leaf litter only.
-const HEIGHT = 1.8, ACCEL = 3.2, DECEL = 5.5, TURN_RATE = 4.2, RADIUS = 0.32;
-const PACE = { concrete: 1.3, leaves: 1.22, grass: 1.22, sand: 1.05 };
+const HEIGHT = 1.8, ACCEL = 3.2, RUN_ACCEL = 5.5, DECEL = 5.5, TURN_RATE = 4.2, RADIUS = 0.32;
+const PACE = { concrete: 1.3, leaves: 1.22, grass: 1.2, mud: 0.78 };
+const RUN_PACE = { concrete: 3.6, leaves: 3.5, grass: 3.45, mud: 1.15 };   // a hard run, a little under the clip's sprint
 const PRINT_STEP = 0.66;
 
 export class Player {
@@ -39,14 +41,16 @@ export class Player {
     this.scale = root.scale.x;
     for (const [n, a] of Object.entries(actions)) this.inPlace(a.getClip(), this.clipInfo[n], n === 'Climb' ? 0.78 : 1);   // the climb was made for a ledge about 2.2 m high; the gate is 1.75 m
     this.walkSpeed = this.clipInfo.Walk.speed * this.scale;          // m/s at timeScale 1
+    this.runSpeed = actions.Run ? this.clipInfo.Run.speed * this.scale : 3.6;   // the run clip's own pace (about 4.5 m/s, a sprint)
     this.contacts = this.footContacts(actions.Walk);
+    this.runContacts = actions.Run ? this.footContacts(actions.Run) : [];
 
     const A = actions;
     A.Idle = mixer.clipAction(poseClip(A.Frustrated.getClip(), 0, 'Idle'), root);   // the neutral stand that opens Frustrated
-    for (const n of ['Idle', 'Walk']) { const a = A[n]; a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.play(); a.setEffectiveWeight(n === 'Idle' ? 1 : 0); }
+    for (const n of ['Idle', 'Walk', 'Run']) { const a = A[n]; if (!a) continue; a.reset(); a.setLoop(THREE.LoopRepeat, Infinity); a.play(); a.setEffectiveWeight(n === 'Idle' ? 1 : 0); }
     A.Idle.setEffectiveTimeScale(0.15);
     for (const n of ['Frustrated', 'Climb']) { A[n].setLoop(THREE.LoopOnce, 1); A[n].clampWhenFinished = true; }
-    this.frozen = false; this.carrying = null; this.seq = null; this.look = null; this.lookW = 0;
+    this.frozen = false; this.running = false; this.carrying = null; this.seq = null; this.look = null; this.lookW = 0;
     this.footfalls = 0; this.stepAcc = 0; this.printSide = 1; this.lastGround = 'concrete'; this.walkPrev = 0;
     this.breath = 0;
   }
@@ -56,10 +60,9 @@ export class Player {
     const clip = action.getClip(), tr = clip.tracks.find((t) => /Hips\.position$/.test(t.name));
     if (!tr) return { speed: 1, up: 1, horiz: [0, 2] };
     const v = tr.values, n = v.length / 3, first = [v[0], v[1], v[2]], last = [v[(n - 1) * 3], v[(n - 1) * 3 + 1], v[(n - 1) * 3 + 2]];
-    const mean = [0, 1, 2].map((k) => { let s = 0; for (let i = 0; i < n; i++) s += v[i * 3 + k]; return s / n; });
-    // the up axis: the one the hips sit high on at the start (feet at 0); horizontal: the other two
-    const up = [0, 1, 2].reduce((a, k) => (Math.abs(first[k]) > Math.abs(first[a]) && Math.abs(mean[k]) > 0.2 ? k : a), 1);
-    const horiz = [0, 1, 2].filter((k) => k !== up);
+    // every clip comes from the same Y-up rig: y is up, x and z are horizontal. (Guessing the up axis from
+    // the first frame picked z for the run, whose hips start 0.57 units forward, and sank Marc to the ground.)
+    const up = 1, horiz = [0, 2];
     const d = Math.hypot(...horiz.map((k) => last[k] - first[k]));
     return { speed: d / clip.duration, up, horiz, first, track: tr.name };
   }
@@ -128,7 +131,7 @@ export class Player {
       const hasInput = mv.len > 0.12;
       if (hasInput) dir.normalize();
       const ground = g.groundAt(this.pos.x, this.pos.z);
-      let target = hasInput ? PACE[ground] * Math.min(1, 0.35 + (mv.len - 0.12) / 0.6) : 0;
+      let target = hasInput ? (this.running ? RUN_PACE : PACE)[ground] * Math.min(1, 0.35 + (mv.len - 0.12) / 0.6) : 0;
       if (hasInput) {
         const want = Math.atan2(dir.x, dir.z), diff = Math.abs(wrap(want - this.yaw));
         target *= 0.25 + 0.75 * Math.max(0, Math.cos(diff * 0.85));
@@ -136,7 +139,7 @@ export class Player {
       }
       const tvx = dir.x * target, tvz = dir.z * target;
       const dvx = tvx - this.vel.x, dvz = tvz - this.vel.z, dl = Math.hypot(dvx, dvz);
-      const maxDv = (target > Math.hypot(this.vel.x, this.vel.z) ? ACCEL : DECEL) * dt;
+      const maxDv = (target > Math.hypot(this.vel.x, this.vel.z) ? (this.running ? RUN_ACCEL : ACCEL) : DECEL) * dt;
       if (dl > maxDv) { this.vel.x += (dvx / dl) * maxDv; this.vel.z += (dvz / dl) * maxDv; } else { this.vel.x = tvx; this.vel.z = tvz; }
       if (!hasInput && Math.hypot(this.vel.x, this.vel.z) < 0.04) this.vel.set(0, 0, 0);
       const ox = this.pos.x, oz = this.pos.z;
@@ -149,21 +152,23 @@ export class Player {
       this.speed += ((dt > 0 ? moved / dt : 0) - this.speed) * (1 - Math.exp(-dt * 10));
       this.lastGround = ground;
       // prints on soft ground
-      if ((ground === 'sand' || ground === 'leaves') && moved > 0) {
+      if ((ground === 'mud' || ground === 'leaves') && moved > 0) {
         this.stepAcc += moved;
         while (this.stepAcc >= PRINT_STEP) {
           this.stepAcc -= PRINT_STEP; this.printSide *= -1;
           const ux = (x - ox) / moved, uz = (z - oz) / moved, yaw = Math.atan2(ux, uz);
-          g.footprints.add(x + Math.cos(yaw) * 0.11 * this.printSide, 0.0, z - Math.sin(yaw) * 0.11 * this.printSide, yaw, ground === 'sand' ? 0.9 : 0.55, this.printSide, 1.05);
+          g.footprints.add(x + Math.cos(yaw) * 0.11 * this.printSide, 0.0, z - Math.sin(yaw) * 0.11 * this.printSide, yaw, ground === 'mud' ? 1.0 : 0.5, this.printSide, 1.05);
         }
       }
-      // blend idle and walk; walk plays at the rate that matches the ground speed
-      const w = smoothstep(0.05, 0.45, this.speed);
-      A.Walk.setEffectiveWeight(w); A.Idle.setEffectiveWeight(1 - w);
-      A.Walk.setEffectiveTimeScale(Math.max(0.3, this.speed / this.walkSpeed));
-      // footsteps on contacts
-      const wt = A.Walk.time;
-      if (w > 0.5) for (const c of this.contacts) if ((this.walkPrev < c && wt >= c) || (wt < this.walkPrev && (c > this.walkPrev || c <= wt))) { g.audio?.step(ground); this.footfalls++; }
+      // blend idle, walk and run by ground speed; each plays at the rate that matches it (no foot sliding)
+      const w = smoothstep(0.05, 0.45, this.speed), r = A.Run ? smoothstep(this.walkSpeed * 1.25, this.walkSpeed * 2.1, this.speed) : 0;
+      A.Walk.setEffectiveWeight(w * (1 - r)); A.Idle.setEffectiveWeight(1 - w);
+      A.Walk.setEffectiveTimeScale(clamp(this.speed / this.walkSpeed, 0.3, 1.6));
+      if (A.Run) { A.Run.setEffectiveWeight(w * r); A.Run.setEffectiveTimeScale(clamp(this.speed / this.runSpeed, 0.55, 1.2)); }
+      // footsteps on contacts of whichever gait dominates
+      const run = r > 0.5, act = run ? A.Run : A.Walk, wt = act.time, cs = run ? this.runContacts : this.contacts;
+      if (run !== this._lastRun) { this.walkPrev = wt; this._lastRun = run; }
+      if (w > 0.5) for (const c of cs) if ((this.walkPrev < c && wt >= c) || (wt < this.walkPrev && (c > this.walkPrev || c <= wt))) { g.audio?.step(ground, run); this.footfalls++; }
       this.walkPrev = wt;
     }
     this.obj.rotation.y = this.yaw;
@@ -176,7 +181,7 @@ export class Player {
   updateSeq(dt) {
     const s = this.seq, A = this.actions, g = this.game;
     s.t += dt;
-    A.Walk.setEffectiveWeight(0);
+    A.Walk.setEffectiveWeight(0); A.Run?.setEffectiveWeight(0);
     if (s.kind === 'try') {
       A.Idle.setEffectiveWeight(Math.max(0, 1 - s.t / 0.25) * 0 + 0.0001);
       if (!s.kicked && s.t > s.dur * 0.3) { s.kicked = true; s.onKick?.(); }

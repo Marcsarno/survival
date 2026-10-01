@@ -1,7 +1,7 @@
 # Builds the opening's asset kit into public/assets/models/kit/*.glb and renders review sheets.
 #
 #   blender --background --factory-startup --python blender/build_kit.py -- [groups] [--textures] [--sheet out.png]
-#   groups: foliage, buildings, props (default: all)
+#   groups: foliage, buildings, props (default: all); neighborhood = only the 2026-10-01 additions
 #
 # Textures come from Poly Haven (tools/fetch-polyhaven.mjs) plus generated foliage (kit/foliage.py).
 import bpy, sys, os, math
@@ -14,6 +14,13 @@ sheet = next((args[i + 1] for i, a in enumerate(args) if a == '--sheet'), None)
 
 C.clear()
 built = {}
+if 'neighborhood' in groups:
+    from kit import foliage, buildings, props
+    foliage.autumn_textures()
+    built.update(foliage.build_autumn())
+    built.update(buildings.build_neighborhood())
+    built['suitcase_open'] = props.suitcase_open('suitcase_open')
+    built['box_cardboard'] = props.box_cardboard('box_cardboard')
 if 'foliage' in groups:
     from kit import foliage
     if '--textures' in args or not os.path.exists(os.path.join(foliage.FOL, 'leaves.png')): foliage.textures()

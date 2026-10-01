@@ -9,3 +9,4 @@ hub/refs-local/
 # Poly Haven 1k originals (re-download with node tools/fetch-polyhaven.mjs); the game uses the WebP copies
 assets/source/polyhaven/textures/
 assets/source/polyhaven/*/textures/
+__pycache__/

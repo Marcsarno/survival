@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 // small corner buttons. No meters, inventory, map or goals.
 const BEAT_NAMES = {
   search: '“Arianna?”', creak: 'A swing creaks', park: 'Into the park', prints: '“She was here.”', bunny: 'Found the bunny', urgency: '“Daddy!”',
-  locked: 'The gate is locked', over: 'Over the gate', reveal: 'The house', argument: 'Voices inside', stay: '“Stay there.”', end: 'End',
+  locked: 'The gate is locked', over: 'Over the gate', fork: 'Mud or firm ground', reveal: 'The house', argument: 'Voices inside', stay: '“Stay there.”', end: 'End',
 };
 
 export class UI {
@@ -62,7 +62,7 @@ export class UI {
   showEnd(seconds, beats = []) {
     const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
     this.el.endTime.textContent = fmt(seconds);
-    this.el.endBeats.innerHTML = beats.filter((b) => BEAT_NAMES[b.id] && b.id !== 'end').map((b) => `<li><span>${fmt(b.t)}</span> ${BEAT_NAMES[b.id]}${b.route ? ` (${b.route})` : ''}</li>`).join('');
+    this.el.endBeats.innerHTML = beats.filter((b) => BEAT_NAMES[b.id] && b.id !== 'end').map((b) => `<li><span>${fmt(b.t)}</span> ${BEAT_NAMES[b.id]}${b.way ? ` (${b.way})` : ''}</li>`).join('');
     this.el.end.classList.remove('hidden'); this.modal = 'end';
   }
   hideEnd() { this.el.end.classList.add('hidden'); if (this.modal === 'end') this.modal = null; }

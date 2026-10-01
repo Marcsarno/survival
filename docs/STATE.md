@@ -1,87 +1,102 @@
 # Current state
 
-Last updated 2026-09-30. The project is **opening pass 2**, built to Marc's direction after he stopped pass 1:
-- **Marc:** his own Tripo model.
-- **Look:** his five style images as the visual target, with real assets, textures and Blender.
-- **Route:** a varied walk ending at a locked gate he climbs, then the house, angled top-right.
-- **Pace:** no mud route and no sprint.
-- **Lines:** text only, no AI voice.
+Last updated 2026-10-01. The project is the **opening, neighborhood pass**, built to Marc's visual revision of 2026-10-01 (`claude-neighborhood-visual-revision.txt`):
+- **Start:** Marc already searching inside an abandoned South Florida neighborhood.
+- **Camera:** closer and a little lower.
+- **Look:** restrained autumn color, worn ground, selective raised grass.
+- **Route:** a purposeful route among houses, side yards and a small park.
+- **Pace:** her call turns the search into a run.
+- **Choice:** a short muddy passage or firm ground.
 
-Live: <https://sarno-survive.vercel.app> runs pass 2 (deployed 2026-10-01; playtest 13/13 against it).
+Live: <https://sarno-survive.vercel.app> **still runs pass 2** (the seawall walk, deployed 2026-10-01). This pass is local only until Marc asks for a deploy.
 
 Builds:
-- **Pass 1 (rejected):** a log, a mud split, graybox. Never committed.
+- **Pass 2 (the seawall walk):** at tag `baseline-opening-pass2-2026-10-01`.
 - **Slice v1 (the long route):** at tag `baseline-opening-route-2026-09-30`.
 - **The sandbox:** at tag `baseline-sandbox-2026-09-30`.
+- **Pass 1:** rejected and never committed.
 
-The visual record is `hub/` (`npm run hub`), **Opening redesign** tab.
+The visual record is `hub/` (`npm run hub`), **Opening redesign** tab. It has:
+- before and after captures
+- the camera comparison
+- the route map
+- beats and timings
+- the findings and fixes
+- two short clips
 
 ## What works (agent-tested; see PLAYTEST.md)
 
-- **The walk:** the seawall promenade → the pump house → east into the park → her prints in the playground sand → north up a leafy lane → the bunny → a locked gate → over it → the house, angled top-right with its front facing south-west → "Stay there." → end card.
-  - An agent takes about 94 s.
-  - A beat comes every 8–15 s, except park → bunny (about 23 s).
-- **Marc:** the Tripo model with its rig.
-  - Walk plays at its own pace (about 1.25 m/s, slower on sand). There is no run.
-  - Idle is a held neutral pose with breathing.
-  - His head turns toward the swing, the prints, the bunny and the house.
-  - At the gate he kicks the latch (the Frustrated clip), then climbs it (the Climb clip, scaled to the gate) and drops down the far side.
-- **Story:** one-time triggers and one text queue (no overlapping lines). Speaker-labeled lines plus italic sound captions. Restart resets everything.
+- **The walk** (the street → round the boarded house → the side passage → the neglected backyard → the locked gate → the park and the swing → the bunny → "Daddy!" and the run → mud or firm ground → the house, top-right → "Stay there." → end card):
+  - An agent takes about 75 s either way.
+  - Both ways at the fork are tested.
+  - Backtracking over the gate works.
+- **First screen:**
+  - the boarded windows and porch
+  - the low wall and the broken gate with her prints through it
+  - the car down on a flat tire with its nose in the broken fence, a suitcase dropped open, a box
+  - the copper oak framing the left
+- **Marc:**
+  - Walks at 1.25–1.3 m/s while searching (unchanged).
+  - After her call he runs (the Run clip, 3.6 m/s, played at 0.8× so the feet hold).
+  - Mud drags him to 1.15 m/s.
+  - Gate: he tries it, then climbs it (and can climb back).
+- **Camera:** candidate A (fov 42°, 14 m, 43°). The pass-2 camera and candidate B are captured on the same views; `?camset=` switches.
 - **Look:**
-  - **Blender kit** (`blender/build_kit.py`): trees, palms, shrubs and palmettos from generated leaf textures; four houses with clay-tile or flat roofs; fences, the gate and the playground; dock, cooler, bunny and branch.
-  - **Poly Haven:** textures, HDRI and props.
-  - **Poly Pizza:** vehicles and the rowboat.
-  - **Ground:** splat-mapped (grass, leaf litter, sand, dirt).
-  - **Water:** animated, with sky reflections.
-  - **Light:** golden-hour sun that sinks along the walk, candle-lit windows.
-  - **Ambience:** swaying foliage, a swing that keeps moving, a bobbing boat, drifting dust and leaves, birds now and then.
-- **Sound (procedural placeholders):** wind, insects, water by the seawall, the swing creak, footsteps by surface, the gate rattle, the door, a tension drone.
-- **Size:** about 11 MB of assets.
-  - Emulated phone, 4× CPU throttle, desktop GPU: 60 fps at every checkpoint.
-  - 230–320k triangles and 200–285 draw calls on screen.
+  - One calm stucco tinted per house (cream, sand, pale teal), with broad weathering; softer roofs.
+  - Copper and rust canopies with green palms and shrubs.
+  - Leaf drifts as decals.
+  - Raised grass clusters at wall and fence bases.
+  - Worn ground with mud and puddles; broken paving.
+  - The tree sway and the moving swing are kept (and checked).
+- **Foliage fixes:** the black NaN texels in every generated leaf texture, the back-face normal flip, and the striped dither (see DESIGN.md).
+- **Performance:**
+  - Emulated phone (4× CPU throttle, desktop GPU): 55–60 fps at all nine checkpoints.
+  - 7.6 MB download.
 
 ## Known issues / limitations
 
-- **No human playtest yet, and no physical phone.**
-- **The look:** much closer to the references but not there yet.
-  - Open ground (the park) reads flat.
-  - No ambient occlusion or contact shadows.
-  - Foliage is generated leaf cards, not painted art.
-- **The climb** reuses a ledge-climb clip, then a dropped landing; it reads at game distance but is not a true over-the-gate animation.
-- **No idle clip:** idle is a held pose.
+- **No human playtest, no physical phone.**
+- **First screen:** the copper canopy partly hides the gate post on a narrow portrait screen; the boarded windows sit near the top edge.
+- **Mud:** the passage is in shadow; the puddles read best in motion. The choice of way is legible but subtle.
+- **Pacing:**
+  - About 14 s with no beat between the passage call and the swing creak.
+  - The firm way is a little quicker than the mud.
+- **Argument:** usually cut short by "Stay there." (placeholder lines).
 - **Placeholders:**
-  - The argument and "Stay there." are placeholder lines.
-  - All sound is a procedural placeholder.
-- **The pharmacy strip** (reference 8) is not in this route.
+  - The climb is the ledge clip scaled to the gate.
+  - Idle is a held pose.
+  - The flat tire is a tilt, not a modeled flat.
+  - All sound is procedural.
 
 ## Next steps (suggested)
 
-1. Marc plays it and says what is wrong.
-2. Then the next visual pass (ground clutter, contact shadows, a better landing, an idle clip) or the door confrontation.
-3. Redeploy after changes when Marc asks.
+1. Marc plays it and says what is wrong (local build; deploy when he asks).
+2. Then what he asks for: a modeled flat tire and open trunk, more to find on the backyard stretch, an idle clip and a better landing, sound for the run and the mud, or the door confrontation.
 
 ## Deployment
 
-- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (opening pass 2 since 2026-10-01).
-- **Redeploy:**
+- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (pass 2 since 2026-10-01).
+- **Redeploy (only when Marc asks):**
   - Run `npx vercel whoami`; it should print `marc731-6361`.
   - Then run `npm run deploy`.
   - `.vercel/project.json` is gitignored. A fresh clone needs `npx vercel link --yes --project sarno-survive --scope marcsarno` once.
 
 ## How to continue
 
-- **Read first:** `README.md`, then `docs/DESIGN.md` (**Opening, pass 2**), then the hub.
+- **Read first:** `README.md`, then `docs/DESIGN.md` (**Opening, neighborhood pass**), then the hub.
 - **Assets pipeline:**
-  - `node tools/fetch-polyhaven.mjs` and `node tools/fetch-assets.mjs` download the sources.
-  - Blender builds the models (Blender 5.2 path in package.json):
-    - `blender --background --factory-startup --python blender/build_kit.py -- [foliage|buildings|props]`
-    - `blender --background --factory-startup --python blender/build_marc.py -- <fbx> public/assets/models/marc.glb`
-  - `node tools/optimize-assets.mjs` makes the WebP textures and compressed models.
+  - `node tools/fetch-polyhaven.mjs` and `node tools/fetch-assets.mjs` download the sources (no new downloads this pass).
+  - Blender builds the models (Blender 5.2):
+    - `blender --background --factory-startup --python blender/build_kit.py -- [foliage|buildings|props|neighborhood] [--textures]`
+    - `neighborhood` rebuilds only this pass's additions and its textures.
+    - `blender --background --factory-startup --python blender/build_marc.py -- <abs fbx> <abs out.glb>` (absolute paths).
+  - `node tools/optimize-assets.mjs` makes the WebP textures (with `diff_soft` variants) and compresses the models.
 - **After a change:**
-  - `npm run playtest` (13 checks).
-  - `node tools/walkthrough.mjs` (screenshots every few seconds plus beat times).
+  - `npm run playtest` (17 checks).
+  - `node tools/walkthrough.mjs --clips`, and again with `--firm` and another `--out`.
+  - `node tools/camera-compare.mjs`.
   - `node tools/hub-timings.mjs`, then update `hub/data.js`.
 - **Dev aids:**
   - `node tools/smoke.mjs --marks=<dir>` shoots every checkpoint.
-  - `?cam=fov,dist,pitch,lead` gives a test camera.
-  - `?dev=1` lets keys 1–7 jump to checkpoints; `?debug=1` shows an overlay.
+  - `?camset=a|b|pass2` and `?cam=fov,dist,pitch,lead` set the camera.
+  - `?dev=1` lets keys 1–9 jump to checkpoints; `?debug=1` shows an overlay.

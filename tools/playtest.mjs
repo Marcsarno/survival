@@ -1,7 +1,8 @@
-// Compact automated playtest for the opening (pass 2). Drives the game in Chromium with real keyboard
-// and pointer input: load and start, the fixed camera, Marc's walk, collisions, the locked gate and the
-// climb, a full play-through to the end card with beat times, restart, muted play, and an emulated
-// portrait touch phone. Agent-driven, not a human playtest.
+// Compact automated playtest for the opening (neighborhood pass). Drives the game in Chromium with real
+// keyboard and pointer input: load and start, the fixed camera, Marc's walk, collisions, the locked gate,
+// the climb and climbing back, the run after her call, mud against firm ground, the swing and the tree
+// sway still moving, a full play-through to the end card with beat times, restart, muted play, and an
+// emulated portrait touch phone. Agent-driven, not a human playtest.
 //
 // Usage: node tools/playtest.mjs [--url=http://localhost:5173/] [--headed]
 // Without --url it starts its own Vite dev server on port 5199. Results: playtest-output/results.json.
@@ -62,8 +63,8 @@ try {
   await page.click('#btn-start'); await sleep(1200);
   const s1 = await state();
   record('audio-starts-on-start-click', s1.audio.state === 'running', { audio: s1.audio.state });
-  record('starts-on-the-seawall-mid-search', s1.story.flags.search != null && s1.subtitle === 'Marc: Arianna?' && s1.section === 'seawall', { subtitle: s1.subtitle, ground: s1.ground });
-  await page.screenshot({ path: path.join(SHOTS, 'p2-01-start.png') });
+  record('starts-in-the-neighborhood-mid-search', s1.story.flags.search != null && s1.subtitle === 'Marc: Arianna?' && s1.section === 'street', { subtitle: s1.subtitle, section: s1.section, ground: s1.ground });
+  await page.screenshot({ path: path.join(SHOTS, 'p3-01-start.png') });
 
   // camera never rotates
   const camDir = () => page.evaluate(() => { const g = window.__game, c = g.camera.cam.position, f = g.camera.focus; return [+(c.x - f.x).toFixed(3), +(c.z - f.z).toFixed(3)]; });
@@ -72,24 +73,42 @@ try {
   const b = await camDir();
   record('camera-fixed-angle', Math.abs(a[0]) < 0.01 && Math.abs(b[0]) < 0.01, { before: a, after: b });
 
-  // the walk: a methodical pace, no run
-  await teleport(-0.6, 9.5); await setKeys(['w']); await sleep(2500); const w1 = await state(); await setKeys(['w', 'Shift']); await sleep(1200); const w2 = await state(); await setKeys([]);
-  record('methodical-walk-no-run', w1.speed > 1.0 && w1.speed < 1.45 && w2.speed < 1.45, { walkSpeed: w1.speed, withShift: w2.speed, clipNaturalSpeed: w1.walkSpeed });
-  // collisions: the seawall parapet and the backyard fence
-  await teleport(-1.6, 6); await setKeys(['a']); await sleep(2000); const c1 = await state(); await setKeys([]);
-  await teleport(3.8, 6); await setKeys(['d']); await sleep(2500); const c2 = await state(); await setKeys([]);
-  record('collisions-hold', c1.pos[0] > -3.6 && c2.pos[0] < 7.2, { parapetX: c1.pos[0], fenceX: c2.pos[0] });
+  // the walk while searching: a methodical pace (Shift does nothing)
+  await teleport(-1.0, 3.6); await setKeys(['d']); await sleep(2500); const w1 = await state(); await setKeys(['d', 'Shift']); await sleep(1200); const w2 = await state(); await setKeys([]);
+  record('methodical-walk-while-searching', w1.speed > 1.0 && w1.speed < 1.45 && w2.speed < 1.45 && !w1.running, { walkSpeed: w1.speed, withShift: w2.speed, clipNaturalSpeed: w1.walkSpeed });
+  // collisions: the boarded house wall and the neighbor's fence along the side passage, the car
+  await teleport(2.6, -13); await setKeys(['a']); await sleep(2000); const c1 = await state(); await setKeys([]);
+  await teleport(2.6, -13); await setKeys(['d']); await sleep(2000); const c2 = await state(); await setKeys([]);
+  await teleport(1.4, -0.8); await setKeys(['d']); await sleep(2000); const c3 = await state(); await setKeys([]);
+  record('collisions-hold', c1.pos[0] > 1.0 && c2.pos[0] < 4.2 && c3.pos[0] < 2.4, { houseWallX: c1.pos[0], fenceX: c2.pos[0], carX: c3.pos[0] });
 
-  // the gate: locked first, then climbed; no getting through otherwise
-  await teleport(23.2, -69.0); await setKeys(['w']); await sleep(1500); const g0 = await state(); await setKeys([]);
+  // the gate: locked first, then climbed; no getting through otherwise; and back over from the far side
+  await teleport(1.0, -32.9); await setKeys(['w']); await sleep(1500); const g0 = await state(); await setKeys([]);
   await page.keyboard.press('e'); await sleep(4200); const g1 = await state();
   await page.keyboard.press('e'); await sleep(3600); const g2 = await state();
-  record('gate-locked-then-climb', g0.pos[1] > -70.2 && g1.story.flags.locked != null && g1.prompt?.includes('Climb') && g2.pos[1] < -70.6 && Math.abs(g2.y) < 0.02 && !g2.seq,
+  record('gate-locked-then-climb', g0.pos[1] > -34 && g1.story.flags.locked != null && g1.prompt?.includes('Climb') && g2.pos[1] < -34.4 && Math.abs(g2.y) < 0.02 && !g2.seq,
     { againstGateZ: g0.pos[1], promptAfterTry: g1.prompt, afterClimb: g2.pos, y: g2.y });
+  await setKeys(['s']); await sleep(900); await setKeys([]); await page.keyboard.press('e'); await sleep(3600); const g3 = await state();
+  record('backtrack-over-the-gate', g3.pos[1] > -33.8 && !g3.seq && Math.abs(g3.y) < 0.02, { afterClimbBack: g3.pos });
+
+  // after her call he runs; mud drags at him, the firm way does not
+  const run = async (x, z, keys, ms) => { await teleport(x, z); await page.evaluate(() => { window.__game.player.running = true; }); await setKeys(keys); await sleep(ms); const r = await state(); await setKeys([]); await page.evaluate(() => { window.__game.player.running = false; }); return r; };
+  const firm = await run(9.9, -52.2, ['w'], 1600), mud = await run(2.25, -52.8, ['w'], 1800);
+  record('run-and-mud', firm.speed > 2.5 && firm.ground === 'concrete' && mud.ground === 'mud' && mud.speed < 1.4 && mud.speed > 0.6, { firmSpeed: firm.speed, firmGround: firm.ground, mudSpeed: mud.speed, mudGround: mud.ground, runClipSpeed: firm.runSpeed });
+
+  // the world still moves on its own: the swing sways, the trees sway (wind shader on the leaf materials)
+  const wm = await page.evaluate(async () => {
+    const g = window.__game, sw = g.level.dynamic.swings[0], a = sw.rotation.x, t0 = performance.now();
+    await new Promise((r) => setTimeout(r, 600));
+    const leaves = []; g.scene.traverse((o) => { if (o.isMesh && ['Leaves', 'LeavesAutumn', 'PalmFrond'].includes(o.material?.name)) leaves.push(o.material.customProgramCacheKey()); });
+    return { swingA: +a.toFixed(3), swingB: +sw.rotation.x.toFixed(3), leafMaterials: leaves.length, wind: leaves.every((k) => k.includes('wind')), ms: Math.round(performance.now() - t0) };
+  });
+  record('swing-and-trees-still-move', Math.abs(wm.swingA - wm.swingB) > 0.01 && wm.leafMaterials > 0 && wm.wind, wm);
 
   // a full play-through with normal controls
   await fresh(); await page.click('#btn-start'); await sleep(400);
   const W = await page.evaluate(() => window.__game.route.walk);
+  await page.evaluate(() => { window.__samples = []; setInterval(() => { const g = window.__game; window.__samples.push({ speed: g.player.speed, running: g.player.running, ground: g.groundAt(g.player.pos.x, g.player.pos.z), urgent: g.story.flags.urgency != null, revealed: g.story.flags.reveal != null }); }, 200); });
   let failAt = null; const tw = Date.now();
   for (const [x, z, act] of W) {
     const want = act === 'bunny' ? 'Pick it up' : act === 'gate' ? ((await state()).prompt?.includes('Climb') ? 'Climb' : 'gate') : null;
@@ -102,14 +121,17 @@ try {
   const end = await state();
   runs.full = { beats: end.story.beats, endTime: end.story.time, lines: end.story.history, wallSeconds: +((Date.now() - tw) / 1000).toFixed(0) };
   const ids = end.story.beats.map((x) => x.id);
-  const need = ['search', 'call2', 'creak', 'park', 'prints', 'bunny', 'urgency', 'locked', 'over', 'reveal', 'argument', 'stay', 'end'];
+  const need = ['search', 'prints', 'call2', 'creak', 'locked', 'over', 'park', 'bunny', 'urgency', 'fork', 'reveal', 'argument', 'stay', 'end'];
   const overlap = end.story.history.some((h, i) => i && h.start < end.story.history[i - 1].end - 0.01);
   record('play-through-to-the-end', !failAt && end.modal === 'end' && need.every((n) => ids.includes(n)) && !overlap,
     { failAt, endTime: end.story.time, beats: end.story.beats.map((x) => `${x.id}@${x.t}`).join(' '), missing: need.filter((n) => !ids.includes(n)), overlap });
-  await page.screenshot({ path: path.join(SHOTS, 'p2-09-end-card.png') });
+  await page.screenshot({ path: path.join(SHOTS, 'p3-09-end-card.png') });
+  const smp = await page.evaluate(() => window.__samples), searching = smp.filter((x) => !x.urgent), runPart = smp.filter((x) => x.urgent && !x.revealed && x.ground !== 'mud');
+  const maxB = Math.max(...searching.map((x) => x.speed)), maxR = Math.max(0, ...runPart.map((x) => x.speed));
+  record('searching-walk-then-run', maxB < 1.5 && maxR > 2.5, { maxSpeedWhileSearching: +maxB.toFixed(2), maxSpeedAfterHerCall: +maxR.toFixed(2), way: end.story.beats.find((x) => x.id === 'fork')?.way });
   await page.click('#btn-again'); await sleep(1500);
   const rs = await state();
-  record('restart-resets', Math.hypot(rs.pos[0] + 0.6, rs.pos[1] - 9.5) < 0.3 && rs.story.beats.length <= 1 && !rs.carrying && !rs.modal && rs.prompt == null, { pos: rs.pos, beats: rs.story.beats.map((x) => x.id) });
+  record('restart-resets', Math.hypot(rs.pos[0] - 0.8, rs.pos[1] + 0.3) < 0.3 && rs.story.beats.length <= 1 && !rs.carrying && !rs.running && !rs.modal && rs.prompt == null, { pos: rs.pos, beats: rs.story.beats.map((x) => x.id), running: rs.running });
 
   // muted: the text carries every line (there are no voices)
   await page.click('#btn-mute'); await sleep(2200); const m = await state();
@@ -125,9 +147,9 @@ try {
   await p2.tap('#btn-start'); await sleep(800);
   const before = await state(p2);
   await p2.evaluate(() => { const el = document.getElementById('joy-zone'); const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 7, clientX: x, clientY: y, bubbles: true, pointerType: 'touch', isPrimary: true })); ev('pointerdown', 110, 690); ev('pointermove', 112, 620); window.__joyEnd = () => ev('pointerup', 112, 620); });
-  await sleep(2200); await p2.screenshot({ path: path.join(SHOTS, 'p2-10-touch.png') }); await p2.evaluate(() => window.__joyEnd()); await sleep(600);
+  await sleep(2200); await p2.screenshot({ path: path.join(SHOTS, 'p3-10-touch.png') }); await p2.evaluate(() => window.__joyEnd()); await sleep(600);
   const after = await state(p2);
-  await p2.evaluate(() => { const g = window.__game; g.player.setPosition(20.4, -60.6, Math.PI); g.snapCamera(); }); await sleep(500);
+  await p2.evaluate(() => { const g = window.__game; g.player.setPosition(2.3, -46.9, Math.PI); g.snapCamera(); }); await sleep(500);
   const lit = await p2.evaluate(() => document.querySelector('#touch [data-act="interact"]').classList.contains('ready'));
   await p2.tap('#touch [data-act="interact"]'); await sleep(1500);
   const bun = await state(p2);

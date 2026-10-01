@@ -1,4 +1,4 @@
-import { BUNNY, GATE, DOOR, PLAY, HOUSE } from '../world/level.js';
+import { BUNNY, GATE, DOOR, PLAY, HOUSE, MUD, MUD_PATCHES } from '../world/level.js';
 import { clamp } from '../core/util.js';
 
 // The opening as an explicit sequence of one-time beats, set by place or action (never a clock) and
@@ -6,17 +6,18 @@ import { clamp } from '../core/util.js';
 // subtitles, and sound captions in italics. One queue, so lines never overlap; nothing holds Marc
 // back while a line plays. reset() clears everything for a restart.
 //
-//   search     Start, on the seawall: "Arianna?"
-//   call2      along the promenade: "Arianna!"
-//   creak      near the end of the promenade: a swing creaks somewhere ahead (caption)
-//   park       into the park through the rail fence
-//   prints     near her small prints in the playground sand: "She was here."
-//   bunny      E at the bunny (or walking onto it, or passing it): "She wouldn't leave this."
-//   urgency    1.6 s later: "Daddy!" from ahead; "Arianna!"
-//   locked     E at the gate: Marc tries it, kicks the latch, "Locked."
+//   search     Start, on the street, already searching: "Arianna?"
+//   prints     near her small prints in the mud at the side-passage gate: "She was here."
+//   call2      in the side passage: "Arianna!"
+//   creak      in the backyard: a swing creaks somewhere ahead (caption)
+//   locked     E at the backyard gate: Marc tries it, kicks the latch, "Locked."
 //   over       E again: he climbs it and drops down the far side
-//   reveal     over the gate: the house, top right; the figure leaves the window; a door shuts
-//   argument   into the yard: two adults argue inside (placeholder lines)
+//   park       into the park: his head turns to the swing, still moving
+//   bunny      E at the bunny (or walking onto it, or passing it): "She wouldn't leave this."
+//   urgency    1.6 s later: "Daddy!" from ahead; "Arianna!"; from here Marc runs
+//   fork       through the broken fence: the mud straight on, or the firm way around (which is recorded)
+//   reveal     into the yard: the house, top right; he slows; the figure leaves the window; a door shuts
+//   argument   two adults argue inside (placeholder lines)
 //   stay       near the door once the argument ends (or right at the door): "Stay there." Marc stops.
 //   end        the end card
 export const SPEAKERS = { marc: 'Marc', arianna: 'Arianna (distant)', woman: 'Woman (inside)', man: 'Man (inside)', door: 'Man (at the door)', sfx: '' };
@@ -26,7 +27,8 @@ const ARGUMENT = [
   ['woman', 'She’s a little girl—'],
   ['man', 'We don’t have a choice.'],
 ];
-export const PRINTS_AT = { x: PLAY.x - 1.8, z: PLAY.z + 1.0 };
+export const PRINTS_AT = { x: MUD_PATCHES[0][0], z: MUD_PATCHES[0][1] };
+const YARD_Z = -61.8, FENCE_Z = -49.4;
 
 export class Story {
   constructor(game) { this.g = game; this.reset(); }
@@ -35,6 +37,7 @@ export class Story {
     this.time = 0; this.flags = {}; this.beats = []; this.queue = []; this.line = null; this.gap = 0; this.timers = []; this.history = [];
     this.moved = 0;
     if (this.g.audio) { this.g.audio.tensionTarget = 0; this.g.audio.creakNear = false; }
+    if (this.g.player) this.g.player.running = false;
     this.g.ui?.subtitle(null); this.g.ui?.hint(null);
   }
 
@@ -63,28 +66,32 @@ export class Story {
       l.onStart?.();
     }
 
-    // 1 the seawall
-    if (f.search == null && this.time > 0.6) { this.mark('search'); this.say('marc', 'Arianna?'); g.ui.hint(g.input.isTouch ? 'Drag on the left side to walk' : 'WASD or arrow keys to walk'); }
+    // 1 the street
+    if (f.search == null && this.time > 0.6) { this.mark('search'); this.say('marc', 'Arianna?'); g.ui.hint(g.input.isTouch ? 'Drag on the left side to walk' : 'WASD or arrow keys to walk'); g.player.lookAt({ x: PRINTS_AT.x, z: PRINTS_AT.z - 2, r: 7 }); }
     if (f.search != null && f.hintDone == null && (this.moved > 3 || this.time > 10)) { f.hintDone = this.time; g.ui.hint(null); }
-    if (f.call2 == null && p.z < -8) { this.mark('call2'); this.say('marc', 'Arianna!'); }
-    if (f.creak == null && p.z < -19) { this.mark('creak'); this.say('sfx', 'A swing creaks, somewhere ahead.'); g.audio.creakNear = true; }
-    // 2 the park and her prints
-    if (f.park == null && p.x > 8.6 && p.z < -25) { this.mark('park'); g.player.lookAt({ x: PLAY.x, z: PLAY.z + 4, r: 14 }); }
-    if (f.prints == null && Math.hypot(p.x - PRINTS_AT.x, p.z - PRINTS_AT.z) < 4.2) { this.mark('prints'); this.say('marc', 'She was here.'); g.player.lookAt({ ...PRINTS_AT, r: 6 }); }
-    if (f.lane == null && p.z < -52) { this.mark('lane'); g.player.lookAt({ x: BUNNY.x, z: BUNNY.z, r: 9 }); }
-    // 3 the bunny
+    if (f.prints == null && Math.hypot(p.x - PRINTS_AT.x, p.z - PRINTS_AT.z) < 2.6) { this.mark('prints'); this.say('marc', 'She was here.'); g.player.lookAt({ ...PRINTS_AT, r: 4 }); }
+    // 2 the passage, 3 the backyard
+    if (f.call2 == null && p.z < -10) { this.mark('call2'); this.say('marc', 'Arianna!'); g.player.lookAt(null); }
+    if (f.creak == null && p.z < -25) { this.mark('creak'); this.say('sfx', 'A swing creaks, somewhere ahead.'); g.audio.creakNear = true; }
+    // 4 the park and the bunny
+    if (f.park == null && p.z < GATE.z - 1.2) { this.mark('park'); g.player.lookAt({ x: PLAY.x, z: PLAY.z, r: 11 }); }
+    if (f.lane == null && p.z < -44) { this.mark('lane'); g.player.lookAt({ x: BUNNY.x, z: BUNNY.z, r: 6 }); }
     if (f.bunny == null) {
       const d = Math.hypot(p.x - BUNNY.x, p.z - BUNNY.z);
-      if (d < 0.75) this.findBunny('walked-onto');
-      else if (p.z < BUNNY.z - 3.5 && d < 5) this.findBunny('passed');
+      if (d < 0.7) this.findBunny('walked-onto');
+      else if (p.z < BUNNY.z - 1.6 && d < 4) this.findBunny('passed');
     }
-    if (f.urgency == null && p.z < GATE.z + 1.4) this.urgency('reached-gate');
-    // 5 over the gate: the reveal, the yard
-    if (f.over != null && f.reveal == null) this.reveal();
-    if (f.reveal != null && f.argument == null && p.z < GATE.z - 3.2) this.argument();
+    if (f.urgency == null && p.z < FENCE_Z) this.urgency('reached-fence');
+    // 5 mud or firm ground
+    if (f.fork == null) {
+      if (p.x > MUD.x0 - 0.2 && p.x < MUD.x1 && p.z < MUD.z0 + 0.2 && p.z > MUD.z1) this.mark('fork', { way: 'mud' });
+      else if (p.x > 8.4 && p.z < -51.4 && p.z > -61) this.mark('fork', { way: 'firm' });
+    }
+    // 6 the yard: the reveal, the voices, the door
+    if (f.reveal == null && p.z < YARD_Z) this.reveal();
     const dDoor = Math.hypot(p.x - DOOR.x, p.z - DOOR.z);
     const argued = f.argument != null && !this.queue.some((l) => l.group === 'argument') && this.line?.group !== 'argument';
-    if (f.stay == null && f.reveal != null && ((dDoor < 6.8 && argued) || dDoor < 4.3)) this.stay();
+    if (f.stay == null && f.reveal != null && ((dDoor < 6.8 && argued) || dDoor < 3.6)) this.stay();
   }
 
   findBunny(how) {
@@ -100,10 +107,11 @@ export class Story {
     this.say('marc', 'She wouldn’t leave this.', { onEnd: () => this.after(1.6, () => this.urgency('after-bunny')) });
   }
 
+  /** Her call from ahead: from here the search is a run. */
   urgency(reason) {
     const g = this.g;
     if (!this.mark('urgency', { reason })) return;
-    this.say('arianna', 'Daddy!', { dur: 1.6, onStart: () => { g.camera.shake = 0.08; g.audio.tensionTarget = 0.35; g.player.lookAt({ x: HOUSE.x, z: HOUSE.z, r: 60 }); } });
+    this.say('arianna', 'Daddy!', { dur: 1.6, onStart: () => { g.camera.shake = 0.08; g.audio.tensionTarget = 0.35; g.player.lookAt({ x: HOUSE.x, z: HOUSE.z, r: 60 }); g.player.running = true; } });
     this.say('marc', 'Arianna!');
   }
 
@@ -120,14 +128,16 @@ export class Story {
     g.player.climbGate(GATE.z, (GATE.x0 + GATE.x1) / 2, fromSouth ? -1 : 1, () => g.level.gateRattle(0.4), () => { if (fromSouth) this.mark('over'); });
   }
 
+  /** Into the yard: the house top right. He slows to a walk; the figure leaves the window; a door shuts. */
   reveal() {
     const g = this.g;
     if (!this.mark('reveal')) return;
+    g.player.running = false;
     g.player.lookAt({ x: HOUSE.x, z: HOUSE.z, r: 30 });
     g.audio.tensionTarget = 0.6;
     this.after(1.1, () => g.level.dynamic.figure.withdraw());
     this.after(1.8, () => { g.audio.door(); this.say('sfx', 'A door shuts inside the house.', { dur: 2 }); });
-    this.after(2.6, () => this.argument());   // the voices start as he crosses the yard
+    this.after(2.2, () => this.argument());
   }
 
   argument() {

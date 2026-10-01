@@ -17,7 +17,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
 #btn-mute { right: calc(max(12px, env(safe-area-inset-right)) + 48px); font-size: 16px; }
 #prompt { position: absolute; left: 50%; bottom: max(40px, calc(env(safe-area-inset-bottom) + 28px)); transform: translateX(-50%); background: rgba(15,20,30,.72); padding: 9px 15px; border-radius: 9px; font-size: 15px; white-space: nowrap; }
 #prompt kbd { background: #f3f1ea; color: #1b2230; border-radius: 4px; padding: 1px 6px; font-weight: 700; margin-right: 6px; font-family: inherit; }
-body.touch #prompt { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 168px); }
+body.touch #prompt { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 214px); }   /* above the subtitle line */
 /* subtitles: speaker-labeled, above the touch controls on phones */
 #subs { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(96px, calc(env(safe-area-inset-bottom) + 84px)); width: min(560px, 90vw); text-align: center; font-size: 17px; line-height: 1.35; padding: 8px 14px; border-radius: 10px; background: rgba(12,10,8,.62); opacity: 0; transition: opacity .2s; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 #subs.on { opacity: 1; }
@@ -25,7 +25,7 @@ body.touch #prompt { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 168px
 #subs.distant { font-style: italic; font-size: 19px; }
 #subs.sfx { font-style: italic; opacity: .85; background: rgba(12,10,8,.4); }
 #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(20,12,6,.38) 100%); }
-body.touch #subs { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 200px); font-size: 16px; }
+body.touch #subs { bottom: calc(max(20px, env(safe-area-inset-bottom)) + 150px); font-size: 16px; }   /* below Marc at the closer camera, above the thumbs */
 #hint { position: absolute; left: 50%; transform: translateX(-50%); top: max(64px, calc(env(safe-area-inset-top) + 58px)); padding: 6px 13px; border-radius: 16px; background: rgba(12,10,8,.5); font-size: 14px; opacity: 0; transition: opacity .4s; white-space: nowrap; }
 #hint.on { opacity: .92; }
 #toasts { position: absolute; left: 50%; transform: translateX(-50%); top: max(64px, calc(env(safe-area-inset-top) + 56px)); display: flex; flex-direction: column; gap: 5px; width: min(360px, 88vw); }

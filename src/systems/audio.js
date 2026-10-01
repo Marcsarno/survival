@@ -1,9 +1,9 @@
 // Temporary sound for the opening, all procedural WebAudio (no files, no voices: lines are text only).
 //
-// - Ambience: a low wind, evening insects (a pulsing high band), water lapping along the seawall
-//   (louder near it), a low tension drone the story raises and cuts.
+// - Ambience: a low wind, evening insects (a pulsing high band), a low tension drone the story raises
+//   and cuts. (The water loop stays silent: there is no water in the neighborhood opening.)
 // - The playground swing creaks as it sways (louder as Marc nears it).
-// - Footsteps by surface (concrete, grass, leaf litter, sand); the gate rattling against its padlock;
+// - Footsteps by surface (concrete, grass, leaf litter, mud), heavier when running; the gate rattling against its padlock;
 //   a thud when Marc lands; the house door.
 // The audio context starts from the Start button (a normal user gesture).
 export class Audio {
@@ -80,11 +80,12 @@ export class Audio {
     this.droneFilter.frequency.value = 160 + 240 * this.tension;
   }
 
-  step(surface) {
-    if (surface === 'concrete') this.burst({ dur: 0.05, freq: 1900, q: 1.3, gain: 0.06 });
-    else if (surface === 'sand') this.burst({ dur: 0.13, freq: 1100, q: 0.6, gain: 0.05, attack: 0.02 });
-    else if (surface === 'leaves') { this.burst({ dur: 0.09, freq: 3200, q: 0.7, gain: 0.05 }); this.burst({ dur: 0.07, freq: 600, q: 0.8, gain: 0.04 }); }
-    else this.burst({ dur: 0.07, freq: 800, q: 0.7, gain: 0.045 });
+  step(surface, run = false) {
+    const k = run ? 1.5 : 1;
+    if (surface === 'concrete') this.burst({ dur: 0.05, freq: 1900, q: 1.3, gain: 0.06 * k });
+    else if (surface === 'mud') { this.burst({ dur: 0.16, freq: 420, q: 0.8, gain: 0.07 * k, attack: 0.02 }); this.burst({ dur: 0.08, freq: 1500, q: 2.5, gain: 0.02 * k, delay: 0.07 }); }
+    else if (surface === 'leaves') { this.burst({ dur: 0.09, freq: 3200, q: 0.7, gain: 0.05 * k }); this.burst({ dur: 0.07, freq: 600, q: 0.8, gain: 0.04 * k }); }
+    else this.burst({ dur: 0.07, freq: 800, q: 0.7, gain: 0.045 * k });
   }
   rattle(k = 1) { // the gate shaken against its padlock
     for (let i = 0; i < 5; i++) { this.burst({ dur: 0.05, freq: 2600 + Math.random() * 900, q: 5, gain: 0.07 * k, delay: i * 0.09 + Math.random() * 0.03 }); this.burst({ dur: 0.08, freq: 250, type: 'lowpass', gain: 0.12 * k, delay: i * 0.09 }); }

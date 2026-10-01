@@ -39,6 +39,8 @@ LIB = {
     'PalmFrond': ('foliage/frond', (1, 1, 1, 1), 0.8, {'alpha': True}),
     'FanLeaf': ('foliage/fan', (1, 1, 1, 1), 0.8, {'alpha': True}),
     'Grass': ('foliage/grass', (1, 1, 1, 1), 0.9, {'alpha': True}),
+    'LeavesAutumn': ('foliage/leaves_autumn', (1, 1, 1, 1), 0.85, {'alpha': True}),
+    'BroadLeaf': ('foliage/broad', (1, 1, 1, 1), 0.7, {'alpha': True}),
     'Glass': (None, (0.05, 0.06, 0.07, 1), 0.15, {}),
     'Paint': (None, (1, 1, 1, 1), 0.75, {}),          # flat painted surfaces; color from vertex colors
     'Plastic': (None, (1, 1, 1, 1), 0.45, {}),        # color from vertex colors

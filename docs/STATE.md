@@ -7,9 +7,11 @@ Last updated 2026-09-30. The project is **opening pass 2**, built to Marc's dire
 - **Pace:** no mud route and no sprint.
 - **Lines:** text only, no AI voice.
 
+Live: <https://sarno-survive.vercel.app> runs pass 2 (deployed 2026-10-01; playtest 13/13 against it).
+
 Builds:
 - **Pass 1 (rejected):** a log, a mud split, graybox. Never committed.
-- **Slice v1 (the long route):** at tag `baseline-opening-route-2026-09-30`. It is still what the live site <https://sarno-survive.vercel.app> runs.
+- **Slice v1 (the long route):** at tag `baseline-opening-route-2026-09-30`.
 - **The sandbox:** at tag `baseline-sandbox-2026-09-30`.
 
 The visual record is `hub/` (`npm run hub`), **Opening redesign** tab.
@@ -56,7 +58,7 @@ The visual record is `hub/` (`npm run hub`), **Opening redesign** tab.
 
 1. Marc plays it and says what is wrong.
 2. Then the next visual pass (ground clutter, contact shadows, a better landing, an idle clip) or the door confrontation.
-3. Deploy when Marc wants it live.
+3. Redeploy after changes when Marc asks.
 
 ## Deployment
 

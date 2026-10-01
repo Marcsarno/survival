@@ -60,7 +60,7 @@ The visual record is `hub/` (`npm run hub`), **Opening redesign** tab.
 
 ## Deployment
 
-- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (currently slice v1).
+- **Vercel project:** `sarno-survive` on the **Marc Sarno** team (`marcsarno`), account marc731@gmail.com. Live URL: <https://sarno-survive.vercel.app> (opening pass 2 since 2026-10-01).
 - **Redeploy:**
   - Run `npx vercel whoami`; it should print `marc731-6361`.
   - Then run `npm run deploy`.

@@ -24,7 +24,7 @@ window.HUB = {
       'Local: <code>npm run dev</code>, then open <a href="http://localhost:5173/">http://localhost:5173/</a> and press Start. On a phone on the same Wi-Fi, open the <code>Network:</code> address Vite prints.',
       'Controls: <b>WASD / arrows</b> or the left-thumb joystick to walk (one methodical pace, no run) · <b>E</b> (or the E button) to pick up, open and climb · <b>Esc</b> pause · <b>R</b> restart.',
       'Checks: <code>npm run playtest</code> (13 checks). Then <code>node tools/hub-timings.mjs</code>.',
-      'The live site still runs slice v1. Neither pass of the redesign has been deployed.',
+      'Live: https://sarno-survive.vercel.app runs pass 2 (deployed 2026-10-01 at Marc’s request; playtest 13/13 against it).',
     ],
     diagnosis: [
       'Pass 1 (agent-tested, rejected by Marc): a straight path with a trunk to step over, a mud route you could simply walk around, an abandoned car in a poor spot, and visuals far worse than before (snow off, flat brown ground, props made of code primitives, no Blender, no asset work).',
@@ -122,7 +122,7 @@ window.HUB = {
     goal: 'Pass 2 of the opening, built to Marc\u2019s direction: his Tripo Marc walks a textured Florida canal neighborhood at golden hour, seawall → park → lane → a locked gate he climbs → the house, angled top-right. Text only. About 94 s for an agent. See the Opening redesign tab.',
     builds: [
       { status: 'agent-tested', label: 'Local dev build: http://localhost:5173/', href: 'http://localhost:5173/', note: 'Run `npm run dev` in the project folder first. ?debug=1 shows fps, position, ground and beats; ?dev=1 adds keys 1–7 to jump to checkpoints; ?voices=0 turns the placeholder voices off.' },
-      { status: 'superseded', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'Still slice v1 (the long route). The redesign has not been deployed.' },
+      { status: 'agent-tested', label: 'Live site: https://sarno-survive.vercel.app', href: 'https://sarno-survive.vercel.app', note: 'Opening pass 2, deployed 2026-10-01 at Marc’s request; playtest 13/13 against it.' },
       { status: 'reference', label: 'Previous builds: git tags baseline-opening-route-2026-09-30 (slice v1) and baseline-sandbox-2026-09-30', note: '`git checkout <tag>` restores either.' },
     ],
     controls: [
